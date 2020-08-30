@@ -11,3 +11,5 @@ The process in order:
  + Display the classes that on average match for same-entity detection 
 	the most. It can be sorted by a descending list, top-most being 
 	the best matching class.
+
+https://hal.inria.fr/hal-01182780/document
