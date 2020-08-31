@@ -1,0 +1,11 @@
+Get list of locations from "https://en.wikipedia.org/wiki/Lists_of_places" by scriping Wikipedia.
+
+OR
+
+Get a list of places by scraping Google Maps locations, a list of all locations.
+I remember a guy having his own maps/navigation server setup which was rendering, maybe I can use something like 
+that for open data.
+
+"https://wikipedia.readthedocs.io/en/latest/code.html"
+"https://www.mediawiki.org/wiki/Extension:GeoData"
+The "wikipedia.geosearch" maybe, check for each meter of latitude and longitude to get list of places.
