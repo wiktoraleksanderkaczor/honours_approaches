@@ -21,24 +21,24 @@ def _pickle_keypoints(point):
                           point.response, point.octave, point.class_id)
 copyreg.pickle(cv2.KeyPoint().__class__, _pickle_keypoints)
 
-imgs = glob.glob("./ddg_images/images_grey/*.*")
+imgs = glob.glob("./dataset_builder/images_grey/*.*")
 
 # Compute or load hashes for each image.
 img_hash = {}
-if os.path.isfile('./ddg_images/hashes.p'):
-    img_hash = pickle.load(open("./ddg_images/hashes.p", "rb"))
+if os.path.isfile('./dataset_builder/hashes.p'):
+    img_hash = pickle.load(open("./dataset_builder/hashes.p", "rb"))
 else:
     tq = tqdm(total=len(imgs))
     for img in imgs:
         _hash = imagehash.dhash(Image.open(img))
         img_hash[img] = _hash
         tq.update(1)
-    pickle.dump(img_hash, open("./ddg_images/hashes.p", "wb"))
+    pickle.dump(img_hash, open("./dataset_builder/hashes.p", "wb"))
 
 # Compute distance for each image.
 imgs_d = {}
-if os.path.isfile('./ddg_images/imgs_d.p'):
-    img_hash = pickle.load(open("./ddg_images/imgs_d.p", "rb"))
+if os.path.isfile('./dataset_builder/imgs_d.p'):
+    img_hash = pickle.load(open("./dataset_builder/imgs_d.p", "rb"))
 else:
     tq = tqdm(total=len(imgs))
     for img in imgs:
@@ -50,7 +50,7 @@ else:
             hash2 = img_hash[img2]
             imgs_d[img][img2] = hash1 - hash2
         tq.update(1)
-    pickle.dump(img_hash, open("./ddg_images/imgs_d.p", "wb"))
+    pickle.dump(img_hash, open("./dataset_builder/imgs_d.p", "wb"))
 
 
 threshold = 10
@@ -79,7 +79,7 @@ del(imgs_d)
 del(img_hash)
 
 # Get all images after delete action.
-imgs = glob.glob("./ddg_images/images_grey/*.*")
+imgs = glob.glob("./dataset_builder/images_grey/*.*")
 
 # Create list of blocks of five with step one, file paths.
 sift_check = []
@@ -109,7 +109,7 @@ for num, files in enumerate(sift_check):
     batch_match = {}
     for fi1 in files:
         fn = fi1.split("/")[-1].split(".")[-2]
-        path = "./ddg_images/sift_data/"+fn+".sift"
+        path = "./dataset_builder/sift_data/"+fn+".sift"
         if os.path.isfile(path):
             batch_match[fi1] = pickle.load(open(path, "rb"))
             continue
@@ -213,7 +213,7 @@ for key, val in actual_total.items():
         f_num += 1
         base += dif
 
-    path = "./ddg_images/to_consider/L"+str(f_num)
+    path = "./dataset_builder/to_consider/L"+str(f_num)
     if not os.path.exists(path):
         os.makedirs(path)
     shutil.move(key, path)

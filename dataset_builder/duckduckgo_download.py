@@ -109,7 +109,7 @@ def thread_function(lst_item, tq):
     try:
         ext = item.split(".")[-1][:3]
         if ext in ["jpg", "JPG", "jpeg", "png"]:
-            open('ddg_images/images/eiffel'+str(num)+'.'+ext, 'wb').write(myfile.content)
+            open('dataset_builder/images/eiffel'+str(num)+'.'+ext, 'wb').write(myfile.content)
     except:
         exec("")
         

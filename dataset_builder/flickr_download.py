@@ -132,7 +132,7 @@ def download(topic, num_images):
     urls = get_urls(topic, num_images)
     
     print("Downloading images for", topic)
-    path = "./ddg_images/images"
+    path = "./dataset_builder/images"
 
     download_images(urls, path)
 
