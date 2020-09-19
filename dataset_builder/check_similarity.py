@@ -5,10 +5,21 @@ from pprint import pprint
 from tqdm import tqdm
 import pickle
 import os
-import pandas as pd
-pd.set_option("display.max_rows", None, "display.max_columns", None)
-
+import sys
+import subprocess
+import copyreg
 import cv2
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+# Register Pickle behaviour for feature points.
+def _pickle_keypoints(point):
+    return cv2.KeyPoint, (*point.pt, point.size, point.angle,
+                          point.response, point.octave, point.class_id)
+copyreg.pickle(cv2.KeyPoint().__class__, _pickle_keypoints)
 
 imgs = glob.glob("./ddg_images/images_grey/*.*")
 
@@ -72,32 +83,27 @@ imgs = glob.glob("./ddg_images/images_grey/*.*")
 
 # Create list of blocks of five with step one, file paths.
 sift_check = []
-neighbours = 3
+#neighbours = 250
+neighbours = len(imgs)
 start, end, length = 0, 0 + neighbours, len(imgs)
-
-def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
 
 sift_check = list(chunks(imgs, neighbours))
 
 #pprint(sift_check)
 
-
 # Extract or load SIFT features for all images.
-#import sift_pyocl as sift
-#from pysift import computeKeypointsAndDescriptors as sift_image
-points_num = 2048
+points_num = 8192
 sift = cv2.SIFT_create(nfeatures=points_num)
 orb = cv2.ORB_create()
 
-bf = cv2.BFMatcher()
+bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
-total = len(sift_check)
+total = 0
+for i in range(len(sift_check)):
+    total += len(sift_check[i]) * len(sift_check[i]) 
+
 matches = {}
-
-tq = tqdm(total=total*neighbours*neighbours)
+tq = tqdm(total=total)
 
 for num, files in enumerate(sift_check):
     batch_match = {}
@@ -109,11 +115,10 @@ for num, files in enumerate(sift_check):
             continue
         else:
             img = cv2.imread(fi1)
-            #kp, des = sift.detectAndCompute(img,None)
-            _, des = orb.detectAndCompute(img,None)
+
+            kp, des = orb.detectAndCompute(img,None)
             
-            #batch_match[fi1] = {"kp": None, "des": des}
-            batch_match[fi1] = {"des": des}
+            batch_match[fi1] = {"kp": kp, "des": des}
 
             pickle.dump(batch_match[fi1], open(path, "wb"))
 
@@ -138,21 +143,27 @@ for num, files in enumerate(sift_check):
             #Read image into numpy array.
             des1 = batch_match[fi1]["des"]
             des2 = batch_match[fi2]["des"]
-            matches_data = bf.knnMatch(des1,des2, k=2)
-
+            try:
+                matches_data = bf.match(des1,des2)
+            except Exception:
+                matches_data = []
+            """
             # Apply ratio test
             good = []
             for m,n in matches_data:
                 if m.distance < 0.75*n.distance:
                     #good.append([m])
                     good.append(True)
+            """
 
             # Those that don't exist in here probably don't have matches can be removed
-            matches[fi1][fi2] = len(good)
+            matches[fi1][fi2] = len(matches_data)
 
     # Update counter.
     #print(num, "/", total)
 
+# Now I get the feeling lower resolution images will be penalised because of less features to be found in their less pixels...
+# Maybe I can scale the judgement based on number of pixels?
 pprint(matches)
 
 totals = {}
@@ -162,5 +173,47 @@ for key, value in matches.items():
     for key1, val1 in value.items():
         totals[key] += val1
 
+tmp = []
+for key, val in totals.items():
+    tmp.append(val)
+
+thr = sum(tmp)/len(tmp)
 pprint(totals)
-exec("")
+actual_total = {}
+for key, val in totals.items():
+    if val < thr:
+        actual_total[key] = val
+
+tmp = []
+for key, val in totals.items():
+    tmp.append(val)
+
+import operator
+sorted_d = sorted(actual_total.items(), key=operator.itemgetter(1))
+pprint(sorted_d)
+print("Threshold for valid image: ", thr)
+input("Press any key to continue...")
+
+l_max, l_min = max(tmp), min(tmp)
+base = l_min
+# 10 %
+dif = (l_max - l_min)*.10
+import shutil
+# I might want to make those equal sized groups too, except for when the difference between one item and the next is too great, some threshold.
+# This threshold could be 1% of the difference? There could be many more groups too.
+# Those should be percentages, for the difference between the max and min of what remains.
+for key, val in actual_total.items():
+    # Check the difference between the last image and current image (num_features_matching)
+    diff = last - val
+    # Update last image
+    last = val
+    # Check if difference bigger than the percent section of the set.
+    if val > base and val-base > dif:
+        # If it is, update folder number
+        f_num += 1
+        base += dif
+
+    path = "./ddg_images/to_consider/L"+str(f_num)
+    if not os.path.exists(path):
+        os.makedirs(path)
+    shutil.move(key, path)

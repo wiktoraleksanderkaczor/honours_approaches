@@ -10,7 +10,7 @@ from tqdm import tqdm
 logging.basicConfig(level=logging.ERROR) 
 logger = logging.getLogger(__name__)
 
-def search(keywords, max_results=None):
+def search(keywords):
     pages = []
 
     url = 'https://duckduckgo.com/' 
@@ -89,7 +89,8 @@ def printJson(objs, count=0):
         print("Image {0}".format(obj["image"]))
         print("__________")
         """
-        links.append(obj["image"])
+        if obj["width"] + obj["height"] > 307200:
+            links.append(obj["image"])
         # EXAMPLE OUTPUT
         """
         Width 3840, Height 2560
@@ -117,10 +118,8 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-
-if __name__ == "__main__":
-
-    pages = search("eiffel tower", max_results=1) 
+def download_from_ddg(topic):
+    pages = search(topic) 
     print("Pages: ", len(pages))
     total = 0
     for links in pages:
