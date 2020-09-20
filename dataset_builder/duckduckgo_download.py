@@ -6,9 +6,34 @@ import logging
 
 import concurrent.futures
 from tqdm import tqdm
+from random import randint
 
 logging.basicConfig(level=logging.ERROR) 
 logger = logging.getLogger(__name__)
+
+def printJson(objs, count=0):
+    links = []
+    for obj in objs:
+        """
+        print("Width {0}, Height {1}".format(obj["width"], obj["height"]))
+        print("Thumbnail {0}".format(obj["thumbnail"]))
+        print("Url {0}".format(obj["url"]))
+        print("Title {0}".format(obj["title"].encode('utf-8')))
+        print("Image {0}".format(obj["image"]))
+        
+        -- EXAMPLE OUTPUT --
+        Width 3840, Height 2560
+        Thumbnail https://tse1.mm.bing.net/th?id=OIF.BrhofaJg5Fx2yl9jrBBQLQ&pid=Api
+        Url https://www.airantares.ro/cazare/in-Paris/Franta/beaugrenelle-eiffel-tour-3-stars-paris-franta/
+        Title b'Beaugrenelle Tour Eiffel, Paris, Franta'
+        Image https://i.travelapi.com/hotels/2000000/1070000/1063000/1062936/c5a49732.jpg
+        """
+
+        if (obj["width"] * obj["height"]) > 307200:
+            links.append(obj["image"])
+        # EXAMPLE OUTPUT
+
+    return links
 
 def search(keywords):
     pages = []
@@ -78,47 +103,25 @@ def search(keywords):
         requestUrl = url + data["next"] 
 
 
-def printJson(objs, count=0):
-    links = []
-    for obj in objs:
-        """
-        print("Width {0}, Height {1}".format(obj["width"], obj["height"]))
-        print("Thumbnail {0}".format(obj["thumbnail"]))
-        print("Url {0}".format(obj["url"]))
-        print("Title {0}".format(obj["title"].encode('utf-8')))
-        print("Image {0}".format(obj["image"]))
-        print("__________")
-        """
-        if obj["width"] + obj["height"] > 307200:
-            links.append(obj["image"])
-        # EXAMPLE OUTPUT
-        """
-        Width 3840, Height 2560
-        Thumbnail https://tse1.mm.bing.net/th?id=OIF.BrhofaJg5Fx2yl9jrBBQLQ&pid=Api
-        Url https://www.airantares.ro/cazare/in-Paris/Franta/beaugrenelle-eiffel-tour-3-stars-paris-franta/
-        Title b'Beaugrenelle Tour Eiffel, Paris, Franta'
-        Image https://i.travelapi.com/hotels/2000000/1070000/1063000/1062936/c5a49732.jpg
-        """
-    return links
-
-
-def thread_function(lst_item, tq):
+def thread_function(lst_item, folder, extensions, tq):
     num, item = lst_item
     myfile = requests.get(item, allow_redirects=True)
-    tq.update(1)
-    try:
-        ext = item.split(".")[-1][:3]
-        if ext in ["jpg", "JPG", "jpeg", "png"]:
-            open('dataset_builder/images/eiffel'+str(num)+'.'+ext, 'wb').write(myfile.content)
-    except:
-        exec("")
-        
+
+    # Any exceptions shouldn't exit the program since this is a thread.
+    fname = item.split("/")[-1].split(".")[-2]
+    ext = item.split(".")[-1][:3]
+    if ext.lower() in extensions:
+        path = folder+str(fname)+str(num)+'.'+ext
+        open(path, 'wb').write(myfile.content)
+        tq.update(1)
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-def download_from_ddg(topic):
+
+def download_from_ddg(topic, folder):
     pages = search(topic) 
     print("Pages: ", len(pages))
     total = 0
@@ -126,6 +129,7 @@ def download_from_ddg(topic):
         total += len(links)
     print("Total: ", total)
 
+    extensions = ["jpg", "png", "bmp", "jpeg"]
     flat_list = [item for sublist in pages for item in sublist]
     tq = tqdm(total=len(flat_list))
     WORKERS = 8
@@ -133,4 +137,4 @@ def download_from_ddg(topic):
     for chunk in chunks_list:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as executor:
             for item in chunk:
-                executor.submit(thread_function, item, tq)
+                executor.submit(thread_function, item, folder, extensions, tq)
