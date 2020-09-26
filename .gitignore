@@ -1,3 +1,13 @@
 dataset_builder/img_data/*
 dataset_builder/orb_data/*
 dataset_builder/consider/*
+dataset_builder/__pycache__/*
+dataset_builder/pts_data/compare/*
+dataset_builder/pts_data/images/*
+dataset_builder/thr_compute_cache.mpts
+dataset_builder/imgs_d.p
+dataset_builder/hashes.p
+dataset_builder/compute_cache.mpts
+opencv-python_from_chuwi.tar.gz
+opencv-python_from_desktop.tar.gz
+

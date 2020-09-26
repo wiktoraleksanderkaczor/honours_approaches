@@ -1,5 +1,6 @@
 import requests 
 import re 
+import os
 import json 
 import time 
 import logging 
@@ -31,7 +32,6 @@ def printJson(objs, count=0):
 
         if (obj["width"] * obj["height"]) > 307200:
             links.append(obj["image"])
-        # EXAMPLE OUTPUT
 
     return links
 
@@ -88,7 +88,7 @@ def search(keywords):
                 res = requests.get(requestUrl, headers=headers, params=params)
                 data = json.loads(res.text)
                 break
-            except ValueError as e:
+            except ValueError:
                 logger.debug("Hitting Url Failure - Sleep and Retry: %s", requestUrl)
                 time.sleep(5)
                 continue
@@ -105,15 +105,17 @@ def search(keywords):
 
 def thread_function(lst_item, folder, extensions, tq):
     num, item = lst_item
-    myfile = requests.get(item, allow_redirects=True)
 
     # Any exceptions shouldn't exit the program since this is a thread.
     fname = item.split("/")[-1].split(".")[-2]
-    ext = item.split(".")[-1][:3]
-    if ext.lower() in extensions:
-        path = folder+str(fname)+str(num)+'.'+ext
-        open(path, 'wb').write(myfile.content)
-        tq.update(1)
+    ext = item.split(".")[-1][:3].lower()
+    path = os.path.join(folder,fname+str(num)+"."+ext)
+
+    if not os.path.isfile(path):
+        myfile = requests.get(item, allow_redirects=True)
+        if ext in extensions:
+            open(path, 'wb').write(myfile.content)
+            tq.update(1)
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""

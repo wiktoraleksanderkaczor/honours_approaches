@@ -116,9 +116,9 @@ def download_from_flickr(topic, num_images, folder):
     # Create iterable for urls to pass.
     photos = get_photos(topic)
     
-    print("Getting urls for", topic)
+    print("Getting urls for", topic, ":")
     urls = get_urls(photos, num_images)
     print("Total number of images found: ", len(urls))
 
-    print("Downloading images for", topic)
+    print("Downloading images for", topic, ":")
     download_images(urls, folder)
