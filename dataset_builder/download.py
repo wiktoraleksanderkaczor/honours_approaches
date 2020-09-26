@@ -4,7 +4,7 @@ from grayscale import grayscale
 from check_similarity import compute_img_hashes, compute_hash_distance, \
     get_duplicate_images, delete_duplicates, feature_extraction, match_features, \
     total_matches, get_average_threshold, get_threshold_items, move_threshold_items, \
-    get_matcher, match_features_compare
+    get_matcher, match_features_compare, get_compare_threshold_items
 
 def runner():
     # Define task
@@ -21,7 +21,7 @@ def runner():
     consider_folder = "./dataset_builder/consider"
     compute_cache = "./dataset_builder/compute_cache.mpts"
     thr_compute_cache = "./dataset_builder/thr_compute_cache.mpts"
-    num_images = 5000
+    num_images = 15000
     compare_img_num = 100
     topic = "eiffel tower"
 
@@ -64,9 +64,8 @@ def runner():
     # Does Lowe ratio apply here?
     #thr = thr*0.75
 
-    _, over_thr = get_threshold_items(totals, thr, compare_max_res, compare_folder, get_scaled_thr_only=True)
+    over_thr = get_compare_threshold_items(totals, thr, compare_max_res, compare_folder, get_scaled_thr_only=True)
     thr = get_average_threshold(over_thr)
-
 
 
     # Match the image data.
@@ -77,8 +76,12 @@ def runner():
     totals = total_matches(matches, do_print=False)
 
     # Get all items under threshold
-    below_thr, over_thr = get_threshold_items(totals, thr, avg_res, gray_images, do_print=True)
-    
+    # 0.99900 is from COLMAP default for feature matching.
+    conf = 0.99850
+    below_thr = get_threshold_items(totals, gray_images, thr, max_resolution, show=True)
+    #below_thr, over_thr = get_threshold_items(totals, thr, avg_res, gray_images, do_print=True)
+
+
     # Move all items under threshold
     move_threshold_items(below_thr, consider_folder, do_print=False)
 

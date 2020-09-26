@@ -74,7 +74,10 @@ def grayscale(path, dstpath, small, blurry, ref_blur=None, do_print=False):
         ref_blur = get_blur_thr(path, files)
         default_blur_thr = 0
     else:
-        default_blur_thr = ref_blur
+        # Technically speaking, ref blur at this point, is peak sharpness.
+        # I think that 75% of peak sharpness is still sharp enough, will test
+        #default_blur_thr = ref_blur
+        default_blur_thr = ref_blur * 0.85
 
     tq = tqdm(total=len(files))
 

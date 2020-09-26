@@ -11,6 +11,7 @@ import cv2
 from chunks import chunks
 import shutil
 import concurrent.futures
+from math import exp
 
 
 # Register Pickle behaviour for feature points.
@@ -358,9 +359,7 @@ def find(pattern, walk_data):
                 result.append(os.path.join(root, name))
     return result[0]
 
-
-def get_threshold_items(totals, thr, max_res, img_folder, get_scaled_thr_only=False, do_print=False):
-    below_thr = {}
+def get_compare_threshold_items(totals, thr, max_res, img_folder, get_scaled_thr_only=False, do_print=False):
     over_thr = {}
 
     avg_val = sum(list(totals.values()))/len(totals)
@@ -373,8 +372,6 @@ def get_threshold_items(totals, thr, max_res, img_folder, get_scaled_thr_only=Fa
     for key, val in totals.items():
         # Get image file path from pts_data filename
         fn = key.split(".")[-2].split("/")[-1]
-        if fn == "3252121974_cfe79e0010_o":
-            exec("")
         img_path = find(fn+".*", walk_data)
 
         # Get resolution
@@ -383,7 +380,12 @@ def get_threshold_items(totals, thr, max_res, img_folder, get_scaled_thr_only=Fa
         res = width * height
 
         # Scale thr
-        ratio = 1 - ((avg_val / thr) + (res / max_res) / 2) 
+        a = (val / thr)
+        b = (avg_val / thr)
+        c = a/b
+        d = (res / max_res)
+        e = ((a + c) / 2)
+        ratio = 1 - e
         #ratio = (val / thr)
         img_thr = None
         if ratio < 1:
@@ -392,25 +394,90 @@ def get_threshold_items(totals, thr, max_res, img_folder, get_scaled_thr_only=Fa
             img_thr = thr
         
         img_thr = abs(img_thr)
-
-        if not get_scaled_thr_only:
-            if val < img_thr:
-                below_thr[img_path] = val
-            else:
-                over_thr[img_path] = val
-        else:
-            over_thr[img_path] = img_thr
+        over_thr[img_path] = img_thr
 
         tq.update(1)
 
     if do_print:
-        pprint(below_thr)
-        print("Total items under threshold: ", len(below_thr))
         pprint(over_thr)
         print("Total items over threshold: ", len(over_thr))
 
-    return below_thr, over_thr
+    return over_thr
 
+def sigmoid(x):
+  return 1 / (1 + exp(-x))
+
+def get_threshold_items(totals, img_folder, thr, max_res, confidence=None, show=False):
+    print("Computing distribution")
+    below_thr = {}
+
+    walk_data = []
+    for root, _, files in os.walk(img_folder):
+        walk_data.append((root, files))
+
+    avg_val = sum(list(totals.values()))/len(totals)
+
+    #max_features = max(totals.values())
+    values = {}
+    x, y = [], []
+    tq = tqdm(total=len(totals))
+    for key, val in totals.items():
+        # Get image file path from pts_data filename
+        fn = key.split(".")[-2].split("/")[-1]
+        img_path = find(fn+".*", walk_data)
+
+        # Get resolution
+        img = cv2.imread(img_path)
+        height, width, _ = img.shape
+        res = width * height
+
+        # Scale thr
+        a = (val / thr)
+        b = (avg_val / thr)
+        c = a/b
+        d = (res / max_res)
+        e = ((a + c) / 2)
+        ratio = 1 - e
+        #ratio = (val / thr)
+        img_thr = None
+        if ratio < 1:
+            img_thr = thr * ratio
+        else:
+            img_thr = thr
+
+        img_thr = abs(img_thr)
+
+        rating = val / img_thr 
+        rating = sigmoid(rating)
+
+        values[img_path] = {"rating": rating, "features": val}
+
+        x.append(rating)
+        
+        tq.update(1)
+
+    if not confidence:
+        confidence = sum(x)/len(x)
+
+    tq = tqdm(total=len(values))
+    for key, val in values.items():
+        y.append(val["features"])
+
+        if val["rating"] < confidence:
+            below_thr[key] = val["rating"]
+        
+        tq.update(1)
+        
+    if show:
+        import matplotlib.pyplot as plt
+        plt.plot(y, x, "o", color="black")
+        plt.plot([x for x in range(len(x))], [confidence for x in range(len(x))], '-ok', color="red")
+        plt.xlabel("Number of features")
+        plt.ylabel("Confidence")
+        plt.show()
+        print("Average is ", confidence)
+        
+    return below_thr
 
 def move_threshold_items(totals, consider_folder, do_print=False):
     """
@@ -444,6 +511,9 @@ def move_threshold_items(totals, consider_folder, do_print=False):
             os.makedirs(path)
         shutil.move(key, path)
         """
+        path = os.path.join(consider_folder, key)
+        if os.path.isfile(path):
+            os.remove(path)
         shutil.move(key, consider_folder)
 
 
