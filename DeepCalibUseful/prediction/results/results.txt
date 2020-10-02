@@ -1,0 +1,10 @@
+./distorted/rBO_m01_a09_d2005-02-21_t15-31_wC.jpg	prediction_focal	490	prediction_dist	0.14
+./distorted/rBO_m02_a05_d2005-02-24_t19-10_wN.jpg	prediction_focal	500	prediction_dist	0.58
+./distorted/rBO_m02_a10_d2005-04-06_t14-50_wS.jpg	prediction_focal	380	prediction_dist	0.24
+./distorted/rBO_m02_a11_d2005-02-21_t15-34_wC.jpg	prediction_focal	390	prediction_dist	0.3
+./distorted/rBO_m02_a11_d2005-02-24_t19-11_wN.jpg	prediction_focal	390	prediction_dist	0.2
+./distorted/rBO_m02_a11_d2005-04-06_t14-50_wS.jpg	prediction_focal	290	prediction_dist	0.2
+./distorted/rBO_m02_a12_d2005-02-21_t15-34_wC.jpg	prediction_focal	240	prediction_dist	0.08
+./distorted/rBO_m02_a12_d2005-02-24_t19-11_wN.jpg	prediction_focal	260	prediction_dist	0.08
+./distorted/rBO_m02_a12_d2005-04-06_t14-50_wS.jpg	prediction_focal	260	prediction_dist	0.22
+./distorted/rBO_m03_a01_d2005-02-21_t15-36_wC.jpg	prediction_focal	410	prediction_dist	0.28

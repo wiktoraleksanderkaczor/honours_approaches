@@ -6,3 +6,4 @@ dataset_builder/consider/*
 dataset_builder/problems/*
 dataset_builder/images/*
 dataset_builder/blurry/*
+DeepCalibUseful/prediction/weights_06_5.61.h5
