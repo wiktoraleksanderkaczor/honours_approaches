@@ -12,6 +12,7 @@ from keras import optimizers
 import numpy as np
 import glob
 import tensorflow as tf
+from tqdm import tqdm
 
 results_path = "./results/"
 IMAGE_FILE_PATH_DISTORTED = "./distorted/"
@@ -58,6 +59,7 @@ print(len(paths_test))
 res_file = open(filename_results, 'a')
 
 #input image
+tq = tqdm(total=len(paths_test))
 for img_path in paths_test:
     image = cv2.imread(img_path)
 
@@ -79,13 +81,11 @@ for img_path in paths_test:
     n_acc_focal += classes_focal[np.argmax(prediction_focal[0])]
     n_acc_dist += classes_distortion[np.argmax(prediction_dist[0])]
 
-    res_file.write(img_path + '\tprediction_focal\t' + str(
-        classes_focal[np.argmax(prediction_focal[0])]) + '\tprediction_dist\t' + str(
+    res_file.write(img_path + ' prediction_focal ' + str(
+        classes_focal[np.argmax(prediction_focal[0])]) + ' prediction_dist ' + str(
         classes_distortion[np.argmax(prediction_dist[0])]) + '\n')
-    print(' ')
-    print('focal:')
-    print(classes_focal[np.argmax(prediction_focal[0])])
 
-    print('dist:')
-    print(classes_distortion[np.argmax(prediction_dist[0])])
+    print('focal:', classes_focal[np.argmax(prediction_focal[0])], 'dist:', classes_distortion[np.argmax(prediction_dist[0])])
+    tq.update(1)
 res_file.close()
+tq.close()

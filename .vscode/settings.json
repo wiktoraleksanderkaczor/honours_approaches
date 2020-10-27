@@ -1,4 +1,11 @@
 {
     "python.pythonPath": "/home/badfox/miniconda3/bin/python",
-    "python.dataScience.jupyterServerURI": "local"
+    "python.dataScience.jupyterServerURI": "local",
+    "files.associations": {
+        "random": "cpp",
+        "*.tcc": "cpp",
+        "functional": "cpp",
+        "typeindex": "cpp",
+        "typeinfo": "cpp"
+    }
 }

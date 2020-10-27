@@ -1,14 +1,16 @@
 dataset_builder/compare_set/*
-dataset_builder/compare_set_temp/*
-dataset_builder/images_tmp/*
+dataset_builder/images/*
 
 dataset_builder/consider/*
 dataset_builder/problems/*
-dataset_builder/images/*
 dataset_builder/blurry/*
+
 DeepCalibUseful/prediction/weights_06_5.61.h5
+
 scripts/CSVs/val/*
 scripts/CSVs/train/*
 scripts/CSVs/index/*
-dataset_builder/*.p
+
 dataset_builder/colmap_folder/*
+dataset_builder/pickles/*
+images/*

@@ -9,9 +9,11 @@ if not os.path.exists(dist_folder):
 
 lines = open("./results/results.txt", "r").readlines()
 paths, focal, distortion = [], [], []
+foc_file = open("scaled_focal.txt", "a")
+
 
 for line in lines:
-    vals = re.split(r'\t+', line)
+    vals = re.split(r' +', line)
     print("path:", vals[0])
     paths.append(vals[0])
     print("focal:",vals[2])
@@ -24,12 +26,13 @@ for item in range(len(paths)):
     distorted_img = cv2.imread(paths[item])
     img_h, img_w, _ = distorted_img.shape
 
-    xi = distortion[item]
+    #xi = distortion[item]
     f = focal[item]
     f_dist = (img_w / img_h) * (img_h / 299) # Focal length
-    u0_dist = img_w / 2
-    v0_dist = img_h / 2
+    foc_file.write(paths[item].split("/")[-1] + " " + str(f_dist) + "\n")
+    #u0_dist = img_w / 2
+    #v0_dist = img_h / 2
 
-    img = undist_function(img_h, img_w, f_dist, xi, distorted_img)
+    #img = undist_function(img_h, img_w, f_dist, xi, distorted_img)
 
-    cv2.imwrite(dist_folder+paths[item], img)
+    #cv2.imwrite(dist_folder+paths[item], img)
