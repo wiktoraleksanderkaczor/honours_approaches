@@ -14,3 +14,7 @@ scripts/CSVs/index/*
 dataset_builder/colmap_folder/*
 dataset_builder/pickles/*
 images/*
+dataset_builder/duplicates/*
+dataset_builder/histogram_check/*
+dataset_builder/too_small/*
+.git_old/*
