@@ -1,3 +1,5 @@
+from common import *
+
 def extract_json(objs, exts):
     links = []
     for obj in objs:

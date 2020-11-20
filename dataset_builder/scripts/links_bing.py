@@ -1,3 +1,5 @@
+from common import *
+
 def links_from_bing(topic, max_images, exts=["jpg", "png", "jpeg"], adult="off", bing_filter="filterui:imagesize-custom_640_480"):
     links = []
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/60.0'}

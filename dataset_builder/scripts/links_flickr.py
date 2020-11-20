@@ -1,3 +1,5 @@
+from common import *
+
 def links_from_flickr(topic, max_images):
     KEY = '88a8660edd2e770b1b00e878af174879'
     SECRET = 'f3063c276e3ad859'

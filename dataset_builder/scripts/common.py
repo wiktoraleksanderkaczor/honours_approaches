@@ -12,6 +12,7 @@ import requests
 import flickrapi
 import imagehash
 import posixpath
+import numpy as np
 from PIL import Image
 from skimage import io
 import multiprocessing
@@ -89,3 +90,34 @@ def move_to(file_list, dest):
         tq.update(1)
     tq.close()
     return exception_flag
+    
+
+def thread_download(item):
+    link = item["link"]
+    folder = item["folder"]
+    service = item["service"]
+    link_hash = str(hashlib.md5(link.encode("utf-8")).hexdigest())
+    ext = link.split(".")[-1].lower()
+    fname = "image-{}.{}".format(link_hash, ext)
+    
+    path = os.path.join(folder, fname)
+
+    if not os.path.isfile(path):
+        myfile = None
+        if service == "ddg":
+            myfile = requests.get(link, allow_redirects=True, timeout=0.5)
+            open(path, 'wb').write(myfile.content)
+        elif service == "flickr":
+            myfile = requests.get(link, stream=True, timeout=0.5)
+            open(path, 'wb').write(myfile.content)
+        elif service == "bing":
+            myfile = requests.get(link, timeout=0.5)
+            open(path, 'wb').write(myfile.content)
+            #wget.download(link, path)
+
+def download(links, folder, service="flickr"):
+    items = []
+    for link in links:
+        items.append({"link": link, "folder": folder, "service": service})
+    print("Downloading links from {} to {}".format(service, folder))
+    thread_it(thread_download, items, WORKERS=None)

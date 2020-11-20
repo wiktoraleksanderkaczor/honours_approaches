@@ -1,9 +1,12 @@
-dataset_builder/compare_set/*
-dataset_builder/images/*
-
-dataset_builder/consider/*
-dataset_builder/problems/*
-dataset_builder/blurry/*
+dataset_builder/scripts/__pycache__/*
+dataset_builder/scripts/intermediate/bad_gps/*
+dataset_builder/scripts/intermediate/blurry/*
+dataset_builder/scripts/intermediate/duplicates/*
+dataset_builder/scripts/intermediate/histogram_check/*
+dataset_builder/scripts/intermediate/images/*
+dataset_builder/scripts/intermediate/pickles/*
+dataset_builder/scripts/intermediate/too_small/*
+dataset_builder/scripts/output/*
 
 DeepCalibUseful/prediction/weights_06_5.61.h5
 
@@ -11,10 +14,5 @@ scripts/CSVs/val/*
 scripts/CSVs/train/*
 scripts/CSVs/index/*
 
-dataset_builder/colmap_folder/*
-dataset_builder/pickles/*
-images/*
-dataset_builder/duplicates/*
-dataset_builder/histogram_check/*
-dataset_builder/too_small/*
 .git_old/*
+
