@@ -16,3 +16,4 @@ scripts/CSVs/index/*
 
 .git_old/*
 
+OpenSfM_GPU/bin/dataset/*

@@ -1,0 +1,1 @@
+I can export matches and features only too, which essentially means I can convert AKAZE features and others to COLMAP stuff hehehe.
