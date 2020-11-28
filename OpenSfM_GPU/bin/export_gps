@@ -37,4 +37,5 @@ if args.output:
     with open(args.output, 'w') as fout:
         fout.write(tsv)
 else:
-    print(tsv)
+    exec("")
+    #print(tsv)

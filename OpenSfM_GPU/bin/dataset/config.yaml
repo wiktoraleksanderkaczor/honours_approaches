@@ -8,20 +8,17 @@ feature_type: SIFT_GPU
 matcher_type: SIFT_GPU
 
 # SIFT for GPU by default in OpenSfM_GPU
-#sift_gpu_peak_threshold: 3.4    # 255.0 * 0.04 / 3.0 as in param.py
-#sift_gpu_edge_threshold: 0.06
+sift_gpu_peak_threshold: 3.4    # 255.0 * 0.04 / 3.0 as in param.py
+sift_gpu_edge_threshold: 0.06
 
 # SIFT for CPU by default in OpenSfM
 #sift_gpu_peak_threshold: 0.1
 #sift_gpu_edge_threshold: 10
 
 # SIFT for GPU by default in COLMAP
-sift_gpu_peak_threshold: 0.00667
-sift_gpu_edge_threshold: 10.00
+#sift_gpu_peak_threshold: 0.00667
+#sift_gpu_edge_threshold: 10.00
 
-# Isn't this supposed to be like .75?
-#lowes_ratio: 0.8              # Ratio test for matches default
-lowes_ratio: 0.75              # Ratio test for matches
 
 # It has to be "1" for at least the extracting and possibly matching images part, in SIFT_GPU.
 # It is better to run the reconstruction in "4"
@@ -31,8 +28,7 @@ depthmap_min_consistent_views: 3      # Min number of views that should reconstr
 depthmap_save_debug_files: no         # Save debug files with partial reconstruction results
 #feature_process_size: 4096
 feature_process_size: 2048
-#bundle_use_gcp: yes
-bundle_use_gps: yes
+bundle_use_gcp: yes
 #feature_use_adaptive_suppression: yes
 use_altitude_tag: no
 
@@ -43,8 +39,10 @@ align_method: auto
 # Params for track creation
 #min_track_length: 3             # Minimum number of features/images per track
 
+triangulation_type: ROBUST                
 # Triangulation type : either considering all rays (FULL), or sing a RANSAC variant (ROBUST)
-triangulation_type: ROBUST
 
-#five_point_algo_min_inliers: 20         # Minimum number of inliers for considering a two view reconstruction valid
+five_point_algo_min_inliers: 15         
+# Minimum number of inliers for considering a two view reconstruction valid
+
 #robust_matching_min_match: 20           # Minimum number of matches to accept matches between two images

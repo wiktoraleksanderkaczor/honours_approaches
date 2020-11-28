@@ -1,20 +1,24 @@
 import os
 import glob
+import pathlib
 import numpy as np
 from tqdm import tqdm
-from shutil import copyfile, rmtree
+from shutil import copyfile, rmtree, move
 from concurrent.futures import ThreadPoolExecutor
 
 
 from sklearn.cluster import KMeans
 
 def create_cluster_folders(n_clusters, path="output/"):
-    rmtree(path)
-    os.mkdir(path)
+    try:
+        rmtree(path)
+    except:
+        pass
+    pathlib.Path(path).mkdir(parents=True)
     for i in range(n_clusters):
         os.mkdir(path+str(i))
 
-def cluster(data_dir, n_clusters):
+def cluster(data_dir, n_clusters, output="output/", subcluster=False):
     import tensorflow as tf
     from tensorflow.keras.preprocessing import image
     from tensorflow.keras.applications import InceptionResNetV2
@@ -48,7 +52,10 @@ def cluster(data_dir, n_clusters):
         img_path, feature = item
         pred = kmeans.predict(feature.reshape(1, -1))[0]
         fname = img_path.split("/")[-1]
-        copyfile(img_path, "output/"+str(pred)+"/"+fname)
+        if not subcluster:
+        	copyfile(img_path, output+str(pred)+"/"+fname)
+        else:
+        	move(img_path, output+str(pred)+"/"+fname)
 
     print("Clearing session...")
     tf.keras.backend.clear_session()

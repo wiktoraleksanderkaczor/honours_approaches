@@ -1,3 +1,4 @@
+#!/home/badfox/miniconda3/bin/python
 from multiprocessing import cpu_count
 import subprocess
 from common import *
@@ -17,10 +18,10 @@ for path in dirs:
 
 CPUs = cpu_count()
 # It will be double, since downloading from both Bing and Flickr.
-bing_data_num = 100
-flickr_data_num = 100
-ddg_data_num = 100
-topic = "notre dame cathedral"
+bing_data_num = 500
+flickr_data_num = 3000
+ddg_data_num = 500
+topic = "Dubrovnik"
 pwd = os.getcwd()
 
 print("""CURRENT CONFIGURATION:
@@ -38,14 +39,14 @@ def display_menu():
 	2. Download from Flickr
 	3. Download from DuckDuckGo
 	4. Rename JPEGs to JPG
-	5. Fix all JPG, otherwise, remove
-	6. Fix all PNG, otherwise, remove
-	7. Convert all PNG to JPG
-	8. Ensure minimum resolution
-	9. Ensure over blurry image threshold
-	10. Check for duplicates (image hashing)
-	11. Histogram check (WIP)
-	12. Image clustering (VGG16 and Birch)
+	5. Convert all PNG to JPG
+	6. Fix all JPG, otherwise, remove
+	7. Ensure minimum resolution
+	8. Ensure over blurry image threshold
+	9. Check for duplicates (image hashing)
+	10. Histogram check (WIP)
+	11. Image clustering (VGG16 and Birch)
+	12. Image clustering (VGG16 and Birch) [Subcluster a cluster]
 	13. Generate "image_list.txt"
 	14. Get GPS data and verify
 	15. EXIT""")
@@ -82,14 +83,6 @@ while True:
 		images_rename(data_dir)
 	
 	elif choice == 5:
-		cmd = r"""cd {}; jpeginfo -cd {}*.jpg;""".format(pwd, data_dir)
-		os.system(cmd)
-	
-	elif choice == 6:
-		cmd = r"""cd {}; pngcheck -fq {}*.png | cut -d " " -f2 | xargs rm;""".format(pwd, data_dir)
-		os.system(cmd)
-	
-	elif choice == 7:
 		# Convert to JPGs
 		cmd = r"""cd {}; mogrify -format jpg {}*.png;""".format(pwd, data_dir)
 		os.system(cmd)
@@ -98,7 +91,11 @@ while True:
 		cmd = "cd {}; rm {}/*.png;".format(pwd, data_dir)
 		os.system(cmd)
 	
-	elif choice == 8:
+	elif choice == 6:
+		cmd = r"""cd {}; jpeginfo -cd {}*.jpg;""".format(pwd, data_dir)
+		os.system(cmd)
+	
+	elif choice == 7:
 		from check_resolution import get_under_res
 		under_res = get_under_res(data_dir)
 		print("Under resolution items:")
@@ -107,7 +104,7 @@ while True:
 		if not move_to(under_res, too_small):
 			del(under_res)
 
-	elif choice == 9:
+	elif choice == 8:
 		#https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
 		# A constant of 200, it does pretty good!
 		from check_blur import get_too_blurry
@@ -116,7 +113,7 @@ while True:
 		if not move_to(too_blurry_data, blurry):
 			del(too_blurry_data)
 		
-	elif choice == 10:
+	elif choice == 9:
 		from image_hashing import compute_img_hashes, compute_hash_distance, get_duplicate_images
 		compute_img_hashes(data_dir)
 		compute_hash_distance(data_dir)
@@ -129,7 +126,7 @@ while True:
 		if not move_to(data_dup, duplicates):
 			del(data_dup)
 	
-	elif choice == 11:
+	elif choice == 10:
 		from histogram_check import check_histogram
 		data_to_move = check_histogram(data_dir)
 
@@ -137,7 +134,7 @@ while True:
 		if not move_to(data_to_move, histogram_dir):
 			del(data_to_move)
 		
-	elif choice == 12:
+	elif choice == 11:
 		n_clusters = -1
 		while not isinstance(n_clusters, int) or n_clusters <= 0:
 			n_clusters = input("How many clusters? ")
@@ -149,6 +146,27 @@ while True:
 		from image_clustering import create_cluster_folders, cluster
 		create_cluster_folders(n_clusters, path="output/")
 		cluster(data_dir, n_clusters)
+
+	elif choice == 12:
+		subcluster = -1
+		while not isinstance(subcluster, int) or subcluster <= -1:
+			subcluster = input("Which sub-cluster to segment? ")
+			try:
+				subcluster = int(subcluster)
+			except:
+				subcluster = -1
+		
+		n_clusters = -1
+		while not isinstance(n_clusters, int) or n_clusters <= 0:
+			n_clusters = input("How many clusters? ")
+			try:
+				n_clusters = int(n_clusters)
+			except:
+				n_clusters = -1
+		
+		from image_clustering import create_cluster_folders, cluster
+		create_cluster_folders(n_clusters, path="subcluster/{}/".format(subcluster))
+		cluster("output/{}/".format(subcluster), n_clusters, output="subcluster/{}/".format(subcluster), subcluster=True)
 
 	elif choice == 13:
 		from generate_image_list import generate_image_list

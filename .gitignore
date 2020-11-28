@@ -1,4 +1,4 @@
-dataset_builder/scripts/__pycache__/*
+dataset_builder/__pycache__/*
 dataset_builder/scripts/intermediate/bad_gps/*
 dataset_builder/scripts/intermediate/blurry/*
 dataset_builder/scripts/intermediate/duplicates/*
@@ -17,3 +17,4 @@ scripts/CSVs/index/*
 .git_old/*
 
 OpenSfM_GPU/bin/dataset/*
+dataset_builder/scripts/subcluster/*
