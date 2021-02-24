@@ -11,17 +11,22 @@ duplicates = "intermediate/duplicates/"
 histogram_dir = "intermediate/histogram_check/"
 too_small = "intermediate/too_small/"
 bad_gps = "intermediate/bad_gps/"
+good_gps = "intermediate/good_gps/"
+cleared_gps = "intermediate/cleared_gps/"
 
-dirs = [data_dir, blurry, pickles, duplicates, histogram_dir, too_small, bad_gps]
+dirs = [data_dir, blurry, pickles, duplicates, \
+	histogram_dir, too_small, bad_gps, good_gps, \
+	cleared_gps]
+
 for path in dirs:
     create_folder(path)
 
 CPUs = cpu_count()
 # It will be double, since downloading from both Bing and Flickr.
-bing_data_num = 500
-flickr_data_num = 3000
-ddg_data_num = 500
-topic = "Dubrovnik"
+bing_data_num = 1500
+flickr_data_num = 5000
+ddg_data_num = 1500
+topic = "Notre Dame Cathedral France"
 pwd = os.getcwd()
 
 print("""CURRENT CONFIGURATION:
@@ -48,11 +53,12 @@ def display_menu():
 	11. Image clustering (VGG16 and Birch)
 	12. Image clustering (VGG16 and Birch) [Subcluster a cluster]
 	13. Generate "image_list.txt"
-	14. Get GPS data and verify
-	15. EXIT""")
+	14. Get GPS data, verify, segregate, and save the good data in JSON.
+	15. Remove EXIF data from all but N images.
+	0. EXIT""")
 	
 # Plus 1 for index
-valid_choices = list(range(1, 15 + 1, 1))
+valid_choices = list(range(0, 15 + 1, 1))
 
 while True:
 	display_menu()
@@ -175,8 +181,12 @@ while True:
 	elif choice == 14:
 		from gps_image import get_gps
 		#gps_num, cartesian = get_gps
-		get_gps(data_dir)
+		get_gps(data_dir, good_gps, bad_gps)
 		
 	elif choice == 15:
+		from gps_image import remove_exif
+		remove_exif(good_gps, cleared_gps)
+
+	elif choice == 0:
 		exit(0)
 

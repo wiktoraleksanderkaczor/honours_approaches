@@ -20,6 +20,7 @@ from pprint import pprint
 import concurrent.futures
 from tqdm import tqdm
 
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
@@ -96,6 +97,7 @@ def thread_download(item):
     link = item["link"]
     folder = item["folder"]
     service = item["service"]
+    tracker = item["tracker"]
     link_hash = str(hashlib.md5(link.encode("utf-8")).hexdigest())
     ext = link.split(".")[-1].lower()
     fname = "image-{}.{}".format(link_hash, ext)
@@ -103,21 +105,28 @@ def thread_download(item):
     path = os.path.join(folder, fname)
 
     if not os.path.isfile(path):
-        myfile = None
-        if service == "ddg":
-            myfile = requests.get(link, allow_redirects=True, timeout=0.5)
+        try:
+            myfile = None
+            if service == "ddg":
+                myfile = requests.get(link, allow_redirects=True, timeout=0.5)
+            elif service == "flickr":
+                myfile = requests.get(link, stream=True, timeout=0.5)
+            elif service == "bing":
+                myfile = requests.get(link, timeout=0.5)
             open(path, 'wb').write(myfile.content)
-        elif service == "flickr":
-            myfile = requests.get(link, stream=True, timeout=0.5)
-            open(path, 'wb').write(myfile.content)
-        elif service == "bing":
-            myfile = requests.get(link, timeout=0.5)
-            open(path, 'wb').write(myfile.content)
+            tracker["succeeded"][fname] = link
             #wget.download(link, path)
+        except Exception as e:
+            tracker["failed"].append(link)
+        
 
 def download(links, folder, service="flickr"):
     items = []
+    tracker = {"failed": [], "succeeded": {}}
     for link in links:
-        items.append({"link": link, "folder": folder, "service": service})
+        items.append({"link": link, "folder": folder, "service": service, "tracker": tracker})
     print("Downloading links from {} to {}".format(service, folder))
     thread_it(thread_download, items, WORKERS=None)
+    create_folder("./logs/")
+    with open("./logs/download_log_{}.json".format(service), "w+") as outfile:
+        json.dump(tracker, outfile, indent=4)
