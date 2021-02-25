@@ -59,16 +59,17 @@ def display_menu():
 	10. Get GPS data, verify, segregate, and save the good data in JSON. [10]
 	11. Remove EXIF data from all but N images. [11]
 	12. Move N GPS images and the cleared GPS image (minus the ten GPS images) to "openMVG/images" folder. [12]
-	13. OpenMVG Reconstruct [13]
-	14. OpenMVG Reconstruct (from known poses, second reconstruction)
-	15. OpenMVG Georegister Model [14]
-	16. OpenMVG Attempt to localise all "images" and "cleared_gps" in reconstruction. [15]
-	17. Get Localisation attempt accuracy from reconstruction. [16]
-	18. OpenMVS Densify Point Cloud (just for visualisation)
+	13. OpenMVG Feature Detection and Matching [13]
+	14. OpenMVG Reconstruct [14]
+	15. OpenMVG Reconstruct (from known poses, second reconstruction)
+	16. OpenMVG Georegister Model [15]
+	17. OpenMVG Attempt to localise all "images" and "cleared_gps" in reconstruction. [16]
+	18. Get Localisation attempt accuracy from reconstruction. [17]
+	19. OpenMVS Densify Point Cloud (just for visualisation)
 	0. EXIT""")
 	
 # Plus 1 for index
-valid_choices = list(range(0, 18 + 1, 1))
+valid_choices = list(range(0, 19 + 1, 1))
 
 while True:
 	display_menu()
@@ -180,20 +181,23 @@ while True:
 				shutil.copyfile(image, openMVG_images+image.split("/")[-1])
 		except Exception as e:
 			print("Failed to select or copy image to \"openMVG/images\" folder due to;", e)
-		
+
 	elif choice == 13:
-		os.system("bash reconstruct.sh")
+		os.system("bash feature_detection_and_matching.sh")
 
 	elif choice == 14:
-		os.system("bash reconstruct_known.sh")
+		os.system("bash reconstruct.sh")
 
 	elif choice == 15:
-		os.system("bash georegister.sh")
+		os.system("bash reconstruct_known.sh")
 
 	elif choice == 16:
-		os.system("bash localise.sh")
+		os.system("bash georegister.sh")
 
 	elif choice == 17:
+		os.system("bash localise.sh")
+
+	elif choice == 18:
 		try:
 			shutil.copyfile(intermediate+"gps_data_from_images.json", openMVG+"gps_data_from_images.json")
 		except Exception as e:
@@ -211,7 +215,7 @@ while True:
 
 		os.system("bash localisation_accuracy.sh")
 
-	elif choice == 18:
+	elif choice == 19:
 		os.system("bash densify.sh")
 
 	elif choice == 0:
