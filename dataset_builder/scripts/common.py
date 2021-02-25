@@ -7,6 +7,7 @@ import glob
 import pickle
 import shutil
 import urllib
+import random
 import hashlib
 import requests
 import flickrapi
@@ -19,6 +20,11 @@ import multiprocessing
 from pprint import pprint
 import concurrent.futures
 from tqdm import tqdm
+
+
+def split_list(to_split):
+    half = len(to_split)//2
+    return to_split[:half], to_split[half:]
 
 
 def chunks(lst, n):
@@ -127,6 +133,5 @@ def download(links, folder, service="flickr"):
         items.append({"link": link, "folder": folder, "service": service, "tracker": tracker})
     print("Downloading links from {} to {}".format(service, folder))
     thread_it(thread_download, items, WORKERS=None)
-    create_folder("./logs/")
     with open("./logs/download_log_{}.json".format(service), "w+") as outfile:
         json.dump(tracker, outfile, indent=4)

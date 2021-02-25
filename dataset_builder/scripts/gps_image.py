@@ -99,7 +99,7 @@ def get_gps(data_dir, good_gps, bad_gps):
 
     tag_paths = {}
     nothing = []
-    for image in files:
+    for image in tqdm(files):
         try:
             lat, lon, alt = get_exif_location(get_exif_data(image))
             if lat and lon:

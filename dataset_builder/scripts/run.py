@@ -4,19 +4,23 @@ import subprocess
 from common import *
 
 # Define task
-data_dir = "intermediate/images/"
-blurry = "intermediate/blurry/"
-pickles = "intermediate/pickles/"
-duplicates = "intermediate/duplicates/"
-histogram_dir = "intermediate/histogram_check/"
-too_small = "intermediate/too_small/"
-bad_gps = "intermediate/bad_gps/"
-good_gps = "intermediate/good_gps/"
-cleared_gps = "intermediate/cleared_gps/"
+intermediate = "./intermediate/"
+data_dir = intermediate+"images/"
+blurry = intermediate+"blurry/"
+pickles = intermediate+"pickles/"
+duplicates = intermediate+"duplicates/"
+histogram_dir = intermediate+"histogram_check/"
+too_small = intermediate+"too_small/"
+bad_gps = intermediate+"bad_gps/"
+good_gps = intermediate+"good_gps/"
+cleared_gps = intermediate+"cleared_gps/"
+openMVG = "./openMVG/"
+openMVG_images = openMVG+"images/"
+logs = "./logs/"
 
 dirs = [data_dir, blurry, pickles, duplicates, \
 	histogram_dir, too_small, bad_gps, good_gps, \
-	cleared_gps]
+	cleared_gps, logs, openMVG_images]
 
 for path in dirs:
     create_folder(path)
@@ -29,6 +33,9 @@ ddg_data_num = 1500
 topic = "Notre Dame Cathedral France"
 pwd = os.getcwd()
 
+NUM_LARGEST_IMAGES = 500
+NUM_GPS_IMAGES = 30
+
 print("""CURRENT CONFIGURATION:
 	- CPUs = {}
 	- Bing Images Number = {}
@@ -39,26 +46,29 @@ print("""CURRENT CONFIGURATION:
 		bing_data_num, flickr_data_num, ddg_data_num, topic, pwd))
 
 def display_menu():
-	print("""OPTIONS:
-	1. Download from Bing
-	2. Download from Flickr
-	3. Download from DuckDuckGo
-	4. Rename JPEGs to JPG
-	5. Convert all PNG to JPG
-	6. Fix all JPG, otherwise, remove
-	7. Ensure minimum resolution
-	8. Ensure over blurry image threshold
-	9. Check for duplicates (image hashing)
-	10. Histogram check (WIP)
-	11. Image clustering (VGG16 and Birch)
-	12. Image clustering (VGG16 and Birch) [Subcluster a cluster]
-	13. Generate "image_list.txt"
-	14. Get GPS data, verify, segregate, and save the good data in JSON.
-	15. Remove EXIF data from all but N images.
+	print("""OPTIONS (Recommended steps ordered will be in [N] format):
+	1. Download from Bing [1]
+	2. Download from Flickr [2]
+ 	3. Download from DuckDuckGo [3]
+	4. Rename JPEGs to JPG [4]
+	5. Convert all PNG to JPG [5]
+	6. Fix all JPG, otherwise, remove [6]
+	7. Ensure minimum resolution [7]
+	8. Ensure over blurry image threshold [8]
+	9. Check for duplicates (image hashing) [9]
+	10. Get GPS data, verify, segregate, and save the good data in JSON. [10]
+	11. Remove EXIF data from all but N images. [11]
+	12. Move N GPS images and the cleared GPS image (minus the ten GPS images) to "openMVG/images" folder. [12]
+	13. OpenMVG Reconstruct [13]
+	14. OpenMVG Reconstruct (from known poses, second reconstruction)
+	15. OpenMVG Georegister Model [14]
+	16. OpenMVG Attempt to localise all "images" and "cleared_gps" in reconstruction. [15]
+	17. Get Localisation attempt accuracy from reconstruction. [16]
+	18. OpenMVS Densify Point Cloud (just for visualisation)
 	0. EXIT""")
 	
 # Plus 1 for index
-valid_choices = list(range(0, 15 + 1, 1))
+valid_choices = list(range(0, 18 + 1, 1))
 
 while True:
 	display_menu()
@@ -131,61 +141,78 @@ while True:
 
 		if not move_to(data_dup, duplicates):
 			del(data_dup)
-	
+
 	elif choice == 10:
-		from histogram_check import check_histogram
-		data_to_move = check_histogram(data_dir)
-
-		print("Moving {} images...".format(len(data_to_move)))
-		if not move_to(data_to_move, histogram_dir):
-			del(data_to_move)
-		
-	elif choice == 11:
-		n_clusters = -1
-		while not isinstance(n_clusters, int) or n_clusters <= 0:
-			n_clusters = input("How many clusters? ")
-			try:
-				n_clusters = int(n_clusters)
-			except:
-				n_clusters = -1
-
-		from image_clustering import create_cluster_folders, cluster
-		create_cluster_folders(n_clusters, path="output/")
-		cluster(data_dir, n_clusters)
-
-	elif choice == 12:
-		subcluster = -1
-		while not isinstance(subcluster, int) or subcluster <= -1:
-			subcluster = input("Which sub-cluster to segment? ")
-			try:
-				subcluster = int(subcluster)
-			except:
-				subcluster = -1
-		
-		n_clusters = -1
-		while not isinstance(n_clusters, int) or n_clusters <= 0:
-			n_clusters = input("How many clusters? ")
-			try:
-				n_clusters = int(n_clusters)
-			except:
-				n_clusters = -1
-		
-		from image_clustering import create_cluster_folders, cluster
-		create_cluster_folders(n_clusters, path="subcluster/{}/".format(subcluster))
-		cluster("output/{}/".format(subcluster), n_clusters, output="subcluster/{}/".format(subcluster), subcluster=True)
-
-	elif choice == 13:
-		from generate_image_list import generate_image_list
-		generate_image_list(data_dir)
-
-	elif choice == 14:
 		from gps_image import get_gps
-		#gps_num, cartesian = get_gps
 		get_gps(data_dir, good_gps, bad_gps)
 		
-	elif choice == 15:
+	elif choice == 11:
 		from gps_image import remove_exif
 		remove_exif(good_gps, cleared_gps)
+
+	elif choice == 12:
+		gps_images = glob.glob(good_gps+"*.jpg")
+		no_gps_images = glob.glob(cleared_gps+"*.jpg")
+		try:
+			ten_gps_images = random.sample(gps_images, NUM_GPS_IMAGES)
+			to_take = [] + ten_gps_images
+			for image in no_gps_images:
+				if image.split("/")[-1] not in ten_gps_images:
+					to_take.append(image)
+
+			images = glob.glob(data_dir+"*.jpg")
+			img_and_size = {}
+			for image in images:
+				img_and_size[image] = os.path.getsize(image)
+			
+			NUM_LARGEST_IMAGES -= len(to_take)
+			sorted_by_size = sorted(img_and_size.items(), key=lambda x: x[1], reverse=True)
+			if len(sorted_by_size) >= NUM_LARGEST_IMAGES:
+				for item in sorted_by_size[:NUM_LARGEST_IMAGES]:
+					img, size = item
+					to_take.append(img)
+			else:
+				for item in sorted_by_size:
+					img, size = item
+					to_take.append(img)
+
+			for image in tqdm(to_take):
+				shutil.copyfile(image, openMVG_images+image.split("/")[-1])
+		except Exception as e:
+			print("Failed to select or copy image to \"openMVG/images\" folder due to;", e)
+		
+	elif choice == 13:
+		os.system("bash reconstruct.sh")
+
+	elif choice == 14:
+		os.system("bash reconstruct_known.sh")
+
+	elif choice == 15:
+		os.system("bash georegister.sh")
+
+	elif choice == 16:
+		os.system("bash localise.sh")
+
+	elif choice == 17:
+		try:
+			shutil.copyfile(intermediate+"gps_data_from_images.json", openMVG+"gps_data_from_images.json")
+		except Exception as e:
+			print("Failed to copy gps_data_from_images.json due to;", e)
+		
+		try:
+			shutil.copyfile("./get_gps_from_json.py", openMVG+"get_gps_from_json.py")
+		except Exception as e:
+			print("Failed to copy openMVG location extraction script due to;", e)
+
+		try:
+			shutil.copyfile("./check_accuracy_from_gps.py", openMVG+"check_accuracy_from_gps.py")
+		except Exception as e:
+			print("Failed to copy openMVG location accuracy checking script due to;", e)
+
+		os.system("bash localisation_accuracy.sh")
+
+	elif choice == 18:
+		os.system("bash densify.sh")
 
 	elif choice == 0:
 		exit(0)
