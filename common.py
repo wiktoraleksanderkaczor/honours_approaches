@@ -15,12 +15,14 @@ import imagehash
 import posixpath
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 from skimage import io
 import multiprocessing
 from pprint import pprint
 import concurrent.futures
-from tqdm import tqdm
+from geopy.geocoders import Nominatim
 
+geolocator = Nominatim(user_agent="honours_dissertation-wiktor_kaczor")
 
 def split_list(to_split):
     half = len(to_split)//2

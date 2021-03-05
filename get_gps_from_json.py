@@ -54,7 +54,7 @@ for key in key_to_gps.keys():
 	x, y, z = key_to_gps[key][0], key_to_gps[key][1], key_to_gps[key][2]
 	lat, lon, alt = ecef2lla(x, y, z)
 	recovered[key_to_filename[key]] = {"lat": lat[0][0], "lon": lon[0][0]}
-	print(key_to_filename[key], lat[0][0], lon[0][0])
+	#print(key_to_filename[key], lat[0][0], lon[0][0])
 
 with open(path.split("/")[-1].split(".")[-2] + "_positions.json", "w") as outfile:
 	json.dump(recovered, outfile, indent=4)

@@ -13,28 +13,45 @@ histogram_dir = intermediate+"histogram_check/"
 too_small = intermediate+"too_small/"
 bad_gps = intermediate+"bad_gps/"
 good_gps = intermediate+"good_gps/"
+good_gps_with_bearing = intermediate+"good_gps_with_bearing/"
 cleared_gps = intermediate+"cleared_gps/"
 openMVG = "./openMVG/"
 openMVG_images = openMVG+"images/"
+openMVG_localisation = openMVG+"localization_images/"
 logs = "./logs/"
 
 dirs = [data_dir, blurry, pickles, duplicates, \
 	histogram_dir, too_small, bad_gps, good_gps, \
-	cleared_gps, logs, openMVG_images]
+	good_gps_with_bearing, cleared_gps, logs, \
+	openMVG_localisation, openMVG_images]
 
 for path in dirs:
     create_folder(path)
 
 CPUs = cpu_count()
+pwd = os.getcwd()
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+
 # It will be double, since downloading from both Bing and Flickr.
 bing_data_num = 1500
 flickr_data_num = 5000
 ddg_data_num = 1500
-topic = "Notre Dame Cathedral France"
-pwd = os.getcwd()
+subject = "Edinburgh Castle"
+country_of_subject = "Scotland"
 
 NUM_LARGEST_IMAGES = 500
-NUM_GPS_IMAGES = 30
+NUM_GPS_IMAGES = 5
+METRES_RADIUS_THRESHOLD = 500
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+
+topic = subject + " " + country_of_subject
+location = geolocator.geocode(topic)
 
 print("""CURRENT CONFIGURATION:
 	- CPUs = {}
@@ -44,6 +61,16 @@ print("""CURRENT CONFIGURATION:
 	- TOPIC = {}
 	- Present Working Directory = {}\n\n""".format(CPUs, \
 		bing_data_num, flickr_data_num, ddg_data_num, topic, pwd))
+
+print("Address:", location.address)
+print("Latitude and Longitude:", location.latitude, location.longitude)
+print("https://www.google.com/maps/@{},{},17.5z".format(location.latitude, location.longitude))
+choice = input("Is this the correct location? [y/n]: ")
+while choice not in ["y", "n"]:
+	choice = input("Is this the correct location? [y/n]: ")
+if choice == "n":
+	print("Please edit your \"country_of_subject\" or \"subject\" to acquire the correct subject.")
+	exit(0)
 
 def display_menu():
 	print("""OPTIONS (Recommended steps ordered will be in [N] format):
@@ -57,19 +84,20 @@ def display_menu():
 	8. Ensure over blurry image threshold [8]
 	9. Check for duplicates (image hashing) [9]
 	10. Get GPS data, verify, segregate, and save the good data in JSON. [10]
-	11. Remove EXIF data from all but N images. [11]
-	12. Move N GPS images and the cleared GPS image (minus the ten GPS images) to "openMVG/images" folder. [12]
+	11. Remove EXIF data from GPS images into "cleared_gps". [11]
+	12. Move {}x GPS images and the cleared GPS images (minus the {}x GPS images), plus up to {}x filler images into the "openMVG/images" folder. [12]
 	13. OpenMVG Feature Detection and Matching [13]
 	14. OpenMVG Reconstruct [14]
 	15. OpenMVG Reconstruct (from known poses, second reconstruction)
 	16. OpenMVG Georegister Model [15]
-	17. OpenMVG Attempt to localise all "images" and "cleared_gps" in reconstruction. [16]
-	18. Get Localisation attempt accuracy from reconstruction. [17]
+	17. OpenMVG Attempt to localise all "cleared_gps" in reconstruction. [16]
+	18. Get localisation attempt accuracy from reconstruction. [17]
 	19. OpenMVS Densify Point Cloud (just for visualisation)
-	0. EXIT""")
+	20. Reconstructed locations to KML file
+	0. EXIT""".format(NUM_GPS_IMAGES, NUM_GPS_IMAGES, NUM_LARGEST_IMAGES))
 	
 # Plus 1 for index
-valid_choices = list(range(0, 19 + 1, 1))
+valid_choices = list(range(0, 20 + 1, 1))
 
 while True:
 	display_menu()
@@ -145,21 +173,33 @@ while True:
 
 	elif choice == 10:
 		from gps_image import get_gps
-		get_gps(data_dir, good_gps, bad_gps)
+		get_gps(data_dir, good_gps, good_gps_with_bearing, bad_gps, location, METRES_THR=METRES_RADIUS_THRESHOLD)
 		
 	elif choice == 11:
 		from gps_image import remove_exif
-		remove_exif(good_gps, cleared_gps)
+		remove_exif(good_gps_with_bearing, cleared_gps)
 
 	elif choice == 12:
-		gps_images = glob.glob(good_gps+"*.jpg")
+		gps_images = glob.glob(good_gps_with_bearing+"*.jpg")
 		no_gps_images = glob.glob(cleared_gps+"*.jpg")
 		try:
-			ten_gps_images = random.sample(gps_images, NUM_GPS_IMAGES)
-			to_take = [] + ten_gps_images
-			for image in no_gps_images:
-				if image.split("/")[-1] not in ten_gps_images:
-					to_take.append(image)
+			try:
+				sample_gps_images = random.sample(gps_images, NUM_GPS_IMAGES)
+			except ValueError:
+				sample_gps_images = gps_images
+			to_take = [] + sample_gps_images
+
+			with open("images_for_georeferencing.json", "w+") as outfile:
+				json.dump(sample_gps_images, outfile, indent=4)
+
+			# Remove full path to just filename
+			for image in range(len(sample_gps_images)):
+				sample_gps_images[image] = sample_gps_images[image].split("/")[-1]
+			
+			# DO NOT INCLUDE NOGPS IMAGES, OTHERWISE, THEY'RE CONTAINED WITHIN THE RECONSTRUCTION.
+			#for image in no_gps_images:
+			#	if image.split("/")[-1] not in sample_gps_images:
+			#	to_take.append(image)
 
 			images = glob.glob(data_dir+"*.jpg")
 			img_and_size = {}
@@ -195,6 +235,17 @@ while True:
 		os.system("bash georegister.sh")
 
 	elif choice == 17:
+		with open("images_for_georeferencing.json", "r") as infile:
+			used_for_georeferencing = json.load(infile)
+		
+		localisation_images = glob.glob(good_gps_with_bearing+"*.jpg")
+
+		for image in used_for_georeferencing:
+			localisation_images.remove(image)
+
+		for image in localisation_images:
+			shutil.copyfile(image, openMVG_localisation+image.split("/")[-1])
+
 		os.system("bash localise.sh")
 
 	elif choice == 18:
@@ -217,6 +268,9 @@ while True:
 
 	elif choice == 19:
 		os.system("bash densify.sh")
+
+	elif choice == 20:
+		os.system("bash gps_to_kml.sh")
 
 	elif choice == 0:
 		exit(0)

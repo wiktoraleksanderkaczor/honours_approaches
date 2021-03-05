@@ -47,6 +47,9 @@ def get_exif_location(exif_data):
     gps_longitude_ref = _get_if_exist(exif_data, 'GPS GPSLongitudeRef')
     gps_altitude_ref = _get_if_exist(exif_data, 'GPS GPSAltitudeRef')
     gps_altitude = _get_if_exist(exif_data, 'GPS GPSAltitude')
+    gps_bearing = _get_if_exist(exif_data, 'GPS GPSDestBearing')
+    gps_direction = _get_if_exist(exif_data, 'GPS GPSDestBearing')
+
 
     if gps_latitude and gps_latitude_ref and gps_longitude and gps_longitude_ref:
         lat = _convert_to_degress(gps_latitude)
@@ -63,7 +66,12 @@ def get_exif_location(exif_data):
         altitude = alt.num / alt.den
         if gps_altitude_ref.values[0] == 1: altitude *= -1
 
-    return lat, lon, altitude
+    
+    bearing = None
+    if gps_bearing and gps_direction:
+        bearing = True
+
+    return lat, lon, altitude, bearing
 
 # Distance between two points
 def measure(lat1, lon1, lat2, lon2): # generally used geo measurement function
@@ -94,16 +102,16 @@ def get_cartesian(lat=None,lon=None):
     z = R *np.sin(lat)
     return x,y,z
 
-def get_gps(data_dir, good_gps, bad_gps):
+def get_gps(data_dir, good_gps, good_gps_with_bearing, bad_gps, location, METRES_THR=500):
     files = glob.glob("{}*.jpg".format(data_dir), recursive=True)
 
     tag_paths = {}
     nothing = []
     for image in tqdm(files):
         try:
-            lat, lon, alt = get_exif_location(get_exif_data(image))
+            lat, lon, alt, bearing = get_exif_location(get_exif_data(image))
             if lat and lon:
-                tag_paths[image] = {"lat": lat, "lon": lon, "alt": alt}
+                tag_paths[image] = {"lat": lat, "lon": lon, "alt": alt, "bearing": bearing}
             else:
                 nothing.append(image)
         except Exception as e:
@@ -112,36 +120,24 @@ def get_gps(data_dir, good_gps, bad_gps):
 
     print("Tag paths:", len(tag_paths))
     print("Nothing found for:", len(nothing))
-
-    sum_distances = {}
-    for key1, val1 in tag_paths.items():
-        total = 0
-        for key2, val2 in tag_paths.items():
-            if key1 != key2:
-                total += measure(val1["lat"], val1["lon"], val2["lat"], val2["lon"])
-        sum_distances[key1] = total
     
-    pprint(sum_distances)
-    from sklearn.cluster import KMeans
-    import numpy as np
-    training_data = np.array(list(sum_distances.values())).reshape(-1, 1)
-    kmeans = KMeans(n_clusters=2).fit_predict(training_data)
-    
-    correct = most_frequent(kmeans)
-    incorrect_items, correct_items = [], []
-    for image, cluster in zip(sum_distances.keys(), kmeans):
-        if cluster != correct:
-            print(image, "-", cluster)
-            incorrect_items.append(image)
+    incorrect_items, correct_items = {}, {}
+    for image in tag_paths.keys():
+        distance = measure(tag_paths[image]["lat"], tag_paths[image]["lon"], location.latitude, location.longitude)
+        if distance > METRES_THR:
+            incorrect_items[image] = distance
         else:
-            correct_items.append(image)
+            correct_items[image] = distance
     
-    for item in incorrect_items:
+    for item in incorrect_items.keys():
         move(item, bad_gps + item.split("/")[-1])
 
     to_save = {}
-    for item in correct_items:
-        move(item, good_gps + item.split("/")[-1])
+    for item in correct_items.keys():
+        if tag_paths[item]["bearing"]:
+            move(item, good_gps_with_bearing + item.split("/")[-1])
+        else:
+            move(item, good_gps + item.split("/")[-1])
         removed_path = item.split("/")[-1]
         to_save[removed_path] = tag_paths[item]
 

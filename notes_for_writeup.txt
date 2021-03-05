@@ -1,0 +1,5 @@
+- Remember initial pair MUST be good, otherwise, it's the difference between reconstructing the inside or outside of a building.
+
+- How the fuck am I meant to say how accurate it is when the fucking GPS embedded in the images is shit off point. Well, it sure won't be quantitative, but it could be qualitative.
+
+- I have to remember to remove the outliers using GpsPrune, the KMeans only works for the most extreme results.

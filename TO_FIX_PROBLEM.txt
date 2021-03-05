@@ -1,0 +1,2 @@
+I know this one was georeferenced using only four images, out of the five given... I need to find a way to ensure the images are actually in the reconstruction from the JSON file.
+One way of doing so might be checking if their "distro_k3" are NOT all 0. 

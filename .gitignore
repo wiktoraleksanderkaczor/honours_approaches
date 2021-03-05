@@ -1,6 +1,5 @@
-dataset_builder/__pycache__/*
-dataset_builder/scripts/intermediate/*
-dataset_builder/scripts/openMVG/*
-dataset_builder/scripts/logs/*
-dataset_builder/scripts/dense_pointcloud/*
-dataset_builder/*.tar.gz
+__pycache__/*
+intermediate/*
+openMVG/*
+logs/*
+*.tar.gz
