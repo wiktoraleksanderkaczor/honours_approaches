@@ -1,0 +1,13 @@
+#python=3.6
+
+opencv-python
+imagehash
+simplekml
+flickrapi
+exifread
+gpsphoto
+requests
+piexif
+pillow
+geopy
+tqdm
