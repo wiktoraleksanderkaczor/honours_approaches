@@ -28,12 +28,11 @@ OPTIONS (Recommended steps ordered will be in [N] format):
 	4. Get GPS data, verify, segregate, make a cleared version and save the good data in JSON. [4]
 	5. Copy some GPS images, most cleared GPS images, and fill with largest normal images to openMVG folder. [5]
 	6. OpenMVG Feature Detection and Matching [11]
-	7. OpenMVG Reconstruct [12]
+	7. Find best initial pair and use OpenMVG to reconstruct [12]
 	8. OpenMVG Georegister Model [13]
 	9. OpenMVG Attempt to localise "cleared_gps" minus images used for georeferencing in reconstruction. [14]
 	10. Get localisation attempt accuracy from reconstruction. [15]
 	11. Reconstructed locations to KML file
-	12. 
 	-1. EXIT
 """
 
@@ -108,27 +107,43 @@ def handle_choice(choice):
 				-o openMVG/data \
 				--describerMethod SIFT \
 				--describerPreset NORMAL \
-				--numThreads {}
+				-f 1 \
+                --numThreads {}
 			""".format(cpu_count()),
 
             """
 			openMVG_main_ComputeMatches \
 				-i openMVG/init/sfm_data.json \
 				-o openMVG/data/ \
-				--guided_matching 1
+				--guided_matching 1 \
+                -f 1
 			"""
         ]
         for cmd in commands:
             os.system(cmd)
 
     elif choice == 7:
+        from images import find_initial_image_pair
+        num_matches = find_initial_image_pair()
+        for num, match in enumerate(num_matches):
+            print(num, match[0])
+        
+        choice = None
+        while choice not in range(len(num_matches)):
+            choice = int(input("ENTER YOUR CHOICE OF INITIALISATION PAIR: "))
+        a, b = num_matches[choice][0][0], num_matches[choice][0][1]
+        a, b = filename(a), filename(b)
+        print("PAIR SELECTED: ", a, b)
+
         cmd = \
             """openMVG_main_IncrementalSfM \
 			-i openMVG/init/sfm_data.json \
 			-m openMVG/data \
 			-o openMVG/output \
-			--prior_usage 0
-		"""
+			--prior_usage 0 \
+            --initialPairA {} \
+            --initialPairB {}
+		""".format(a, b)
         os.system(cmd)
 
     elif choice == 8:

@@ -158,14 +158,27 @@ def remove_exif(some_gps, cleared_gps):
 
 
 def select_and_copy_GPS_images(data_dir, cleared_gps, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_IMAGES, openMVG_images):
-    try:
-        gps_images = random.sample(
-            glob(good_gps+"*.jpg"),
-            NUM_GPS_IMAGES
-        )
-    except ValueError:
-        gps_images = glob(good_gps+"*.jpg")
+    # Load previous images used if the file exists.
+    gps_images = []
+    if os.path.isfile("logs/images_for_georeferencing.json"):
+        with open("logs/images_for_georeferencing.json", "r") as infile:
+            gps_images = json.load(infile)
+    
+    # Sort possible GPS images by size (maximise ability to be included) and set number to be 
+    # added to minus what is already there.
+    possible_gps = sorted(glob(good_gps+"*.jpg"), key=os.path.getsize)
 
+    # Add only enough images to fill the quota, not removing those there. 
+    # If there aren't enough, all will be used.
+    added = len(gps_images)
+    for image in possible_gps:
+        if added >= NUM_GPS_IMAGES:
+            break
+        if image not in gps_images:
+            gps_images.append(image)
+            added += 1
+
+    # Save the images for later.
     with open("logs/images_for_georeferencing.json", "w+") as outfile:
         json.dump(gps_images, outfile, indent=4)
 
@@ -173,26 +186,25 @@ def select_and_copy_GPS_images(data_dir, cleared_gps, good_gps, NUM_GPS_IMAGES, 
     for image in gps_images:
         copy(image, openMVG_images + filename(image))
 
-    # Remove the number of images already taken.
-    NUM_LARGEST_IMAGES -= len(gps_images)
-
-    # Get sizes for all normal images
-    normal_images = glob(data_dir+"*.jpg")
-    img_and_size = {}
-    for image in normal_images:
-        img_and_size[image] = os.path.getsize(image)
-
     # Sort by size and move the amount needed.
-    sorted_by_size = sorted(img_and_size.items(),
-                            key=lambda x: x[1], reverse=True)
-    if len(sorted_by_size) > NUM_LARGEST_IMAGES:
-        for item in sorted_by_size[:NUM_LARGEST_IMAGES]:
-            image, _ = item
+    sorted_by_size = sorted(glob(data_dir+"*.jpg"), key=os.path.getsize)
+
+    images_used = []
+    if os.path.isfile("logs/images_used.json"):
+        with open("logs/images_used.json", "w+") as infile:
+            images_used = json.load(infile)
+
+    added = len(images_used)
+    for image in sorted_by_size:
+        if added >= NUM_LARGEST_IMAGES:
+            break
+        if image not in images_used:
+            images_used.append(image)
             copy(image, openMVG_images + filename(image))
-    else:
-        for item in sorted_by_size:
-            image, _ = item
-            copy(image, openMVG_images + filename(image))
+            added += 1
+
+    with open("logs/images_used.json", "w+") as outfile:
+        json.dump(images_used, outfile, indent=4)
 
 
 def convert_to_kml(georeference, output="openMVG/positions.kml"):
