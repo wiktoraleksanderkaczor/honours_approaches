@@ -14,7 +14,12 @@ dirs = [
     "intermediate/too_small",
     "openMVG/images",
     "openMVG/localization_images",
-    "logs"
+    "openMVG/refinement",
+    "reconstructions/",
+    "logs/",
+    "video",
+    "video/downloads/",
+    "video/extracted/",
 ]
 
 

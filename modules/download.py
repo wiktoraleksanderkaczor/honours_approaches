@@ -68,9 +68,12 @@ def download_task(link, tracker, folder):
         except Exception as e:
             tracker["failed"][link] = str(e)
         else:
-            open(path, 'wb').write(myfile.content)
-            tracker["succeeded"][link] = fname
-            tracker["len"] += 1
+            try:
+                open(path, 'wb').write(myfile.content)
+                tracker["succeeded"][link] = fname
+                tracker["len"] += 1
+            except Exception as e:
+                print(path, "-", e)
 
 
 def download(links, folder):

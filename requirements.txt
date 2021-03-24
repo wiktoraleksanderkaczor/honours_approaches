@@ -1,7 +1,8 @@
 #python=3.6
-
 opencv-python
+youtube-dl
 imagehash
+rapidjson
 simplekml
 flickrapi
 exifread
@@ -12,6 +13,3 @@ piexif
 pillow
 geopy
 tqdm
-pocl
-silx
-scipy==1.1.0

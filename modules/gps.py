@@ -1,5 +1,5 @@
-
-from fileio import filename, copy
+from fileio import create_folder, filename, copy
+from joblib import Parallel, delayed
 from cmath import cos, sin, pi
 from GPSPhoto import gpsphoto
 from math import atan2, sqrt
@@ -10,7 +10,6 @@ from glob import glob
 import numpy as np
 import simplekml
 import exifread
-import random
 import json
 import os
 
@@ -105,8 +104,10 @@ def get_gps(data_dir, some_gps, good_gps, bad_gps, location, METRES_THR=500):
         try:
             lat, lon, alt, bearing = get_exif_location(get_exif_data(image))
             if lat and lon:
-                images_with_gps[image] = {
-                    "lat": lat, "lon": lon, "alt": alt, "bearing": bearing}
+                # Not really good but there seem to be a lot of images that just say 0m, have to filter.
+                if alt and alt != 0:
+                    images_with_gps[image] = {
+                        "lat": lat, "lon": lon, "alt": alt, "bearing": bearing}
             else:
                 nothing.append(image)
         except Exception as e:
@@ -157,7 +158,7 @@ def remove_exif(some_gps, cleared_gps):
             img_without_exif.save(cleared_gps+filename(image))
 
 
-def select_and_copy_GPS_images(data_dir, cleared_gps, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_IMAGES, openMVG_images):
+def select_and_copy_GPS_images(data_dir, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_IMAGES, openMVG_images):
     # Load previous images used if the file exists.
     gps_images = []
     if os.path.isfile("logs/images_for_georeferencing.json"):
@@ -166,17 +167,15 @@ def select_and_copy_GPS_images(data_dir, cleared_gps, good_gps, NUM_GPS_IMAGES, 
     
     # Sort possible GPS images by size (maximise ability to be included) and set number to be 
     # added to minus what is already there.
-    possible_gps = sorted(glob(good_gps+"*.jpg"), key=os.path.getsize)
+    possible_gps = sorted(glob(good_gps+"*.jpg"), key=os.path.getsize, reverse=True)
 
     # Add only enough images to fill the quota, not removing those there. 
     # If there aren't enough, all will be used.
-    added = len(gps_images)
     for image in possible_gps:
-        if added >= NUM_GPS_IMAGES:
+        if len(gps_images) >= NUM_GPS_IMAGES:
             break
         if image not in gps_images:
             gps_images.append(image)
-            added += 1
 
     # Save the images for later.
     with open("logs/images_for_georeferencing.json", "w+") as outfile:
@@ -187,21 +186,19 @@ def select_and_copy_GPS_images(data_dir, cleared_gps, good_gps, NUM_GPS_IMAGES, 
         copy(image, openMVG_images + filename(image))
 
     # Sort by size and move the amount needed.
-    sorted_by_size = sorted(glob(data_dir+"*.jpg"), key=os.path.getsize)
+    sorted_by_size = sorted(glob(data_dir+"*.jpg"), key=os.path.getsize, reverse=True)
 
     images_used = []
     if os.path.isfile("logs/images_used.json"):
-        with open("logs/images_used.json", "w+") as infile:
+        with open("logs/images_used.json", "r") as infile:
             images_used = json.load(infile)
 
-    added = len(images_used)
     for image in sorted_by_size:
-        if added >= NUM_LARGEST_IMAGES:
+        if len(images_used) >= NUM_LARGEST_IMAGES:
             break
         if image not in images_used:
             images_used.append(image)
             copy(image, openMVG_images + filename(image))
-            added += 1
 
     with open("logs/images_used.json", "w+") as outfile:
         json.dump(images_used, outfile, indent=4)
@@ -214,7 +211,9 @@ def convert_to_kml(georeference, output="openMVG/positions.kml"):
     kml = simplekml.Kml()
 
     for key, values in data.items():
-        kml.newpoint(name=key, coords=[(values["lon"], values["lat"])])
+        #https://simplekml.readthedocs.io/en/latest/geometries.html
+        #https://simplekml.readthedocs.io/en/latest/constants.html#simplekml.AltitudeMode
+        kml.newpoint(name=key, coords=[(values["lon"], values["lat"], values["alt"])], altitudemode="absolute")
 
     kml.save(output)
 
@@ -272,7 +271,7 @@ def export_gps_to_file(georeference, output="openMVG/"):
     for key in key_to_gps.keys():
         x, y, z = key_to_gps[key][0], key_to_gps[key][1], key_to_gps[key][2]
         lat, lon, alt = ecef2lla(x, y, z)
-        recovered[key_to_filename[key]] = {"lat": lat[0][0], "lon": lon[0][0]}
+        recovered[key_to_filename[key]] = {"lat": lat[0][0], "lon": lon[0][0], "alt": alt[0][0]}
         #print(key_to_filename[key], lat[0][0], lon[0][0])
 
     no_ext = filename(georeference).split(".")[-2]
@@ -280,48 +279,74 @@ def export_gps_to_file(georeference, output="openMVG/"):
         json.dump(recovered, outfile, indent=4)
 
 
-def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions):
+def gps_to_img_task(img, val, workspace_folder, new_gps_images_folder):
+    try:
+        lat, lon, alt = val["lat"], val["lon"], val["alt"]
+        img_path = glob(workspace_folder + "/**/" + img)[0]
+        photo = gpsphoto.GPSPhoto(img_path)
+        info = gpsphoto.GPSInfo((lat, lon), alt=int(alt))
+        # Try to write with new GPS, fallback to just copying it over.
+        try:
+            photo.modGPSData(info, new_gps_images_folder + img)
+        except:
+            copy(img_path, new_gps_images_folder + img)
+    except Exception as e:
+        print(e)
+
+
+def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_folder="openMVG/localization_images_new_gps/"):
+    with open(positions) as f:
+        data = json.load(f)
+
+    create_folder(new_gps_images_folder)
+    print("WRITING GPS TO IMAGES")
+    Parallel(n_jobs=24, prefer="threads")(
+        delayed(gps_to_img_task)(img, val, workspace_folder, new_gps_images_folder) \
+            for img, val in tqdm(data.items()) \
+            if not os.path.isfile(new_gps_images_folder + img)
+    )
+
+
+
+def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None):
     # Ground truth
-    actual = None
     with open(gps_data, "r") as infile:
         actual = json.load(infile)
 
-    # Within the reconstruction before localisation
-    reconstructed_locations = None
-    with open(sfm_geo_positions, "r") as infile:
-        reconstructed_locations = json.load(infile)
-
     # Position after localisation
-    localised = None
     with open(sfm_expanded_positions, "r") as infile:
         localised = json.load(infile)
 
-    newly_localised_with_existing_gps = []
-    used_for_georeferencing = []
+    # Getting difference to check which images were newly localised.
+    with open(sfm_geo_positions, "r") as infile:
+        geo_positions = json.load(infile)
+    localised_images = [img for img in localised.keys() if img not in geo_positions.keys()]
+
+    with open("logs/not_used_for_georeferencing.json", "r") as infile:
+        not_used_for_georeferencing = json.load(infile) 
+    not_used_for_georeferencing = [filename(img) for img in not_used_for_georeferencing]
+
+    newly_localised = {}
     sum_error = 0
     for key in localised.keys():
-        # Image was used for the actual georeferencing.
-        if key in reconstructed_locations.keys() and key in actual.keys():
-            used_for_georeferencing.append(key)
-
         # Image not used for georeferencing but as the only images used for localisation were those with GPS cleared... The image has accurate GPS.
-        elif key in actual.keys() and key not in reconstructed_locations.keys():
+        if key in actual.keys() and key in localised_images and key in not_used_for_georeferencing:
             lat1, lat2 = localised[key]["lat"], actual[key]["lat"]
             lon1, lon2 = localised[key]["lon"], actual[key]["lon"]
+            alt1, alt2 = localised[key]["alt"], actual[key]["alt"]
             lat_distance = lat1 - lat2
             lon_distance = lon1 - lon2
-            newly_localised_with_existing_gps.append(key)
+            alt_distance = alt1 - alt2
             metres_distance = measure(lat1, lon1, lat2, lon2)
             sum_error += metres_distance
-            print(key + ":\n",
-                  "actual_lat: {}, actual_lon: {}\n".format(lat2, lon2),
-                  "localised_lat: {}, localised_lon: {}\n".format(lat1, lon1),
-                  "lat_distance: {}, lon_distance: {}\n".format(
-                      lat_distance, lon_distance),
-                  "distance in metres from desired position: {}m".format(metres_distance))
-            print("\n")
+            newly_localised[key] = {
+                "actual": {"lat": lat2, "lon": lon2, "alt": alt2},
+                "localised": {"lat": lat1, "lon": lon1, "alt": alt1},
+                "change_in_coords": {"lat_change": lat_distance, "lon_change": lon_distance, "alt_change": alt_distance},
+                "metres_distance_from_actual": metres_distance
+            }
 
-    print("Localised, not contained within initial reconstruction, including used for georeferencing:", len(
-        newly_localised_with_existing_gps))
-    print("Initial, used for georeferencing:", len(used_for_georeferencing))
-    print("Sum of acquired error:", sum_error)
+    newly_localised["sum_error"] = sum_error
+
+    if output:
+        json.dump(newly_localised, open(output, "w+"), indent=4)

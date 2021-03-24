@@ -4,3 +4,6 @@ intermediate/*
 openMVG/*
 logs/*
 *.tar.gz
+reconstructions/*
+video/extracted/*
+video/downloads/*
