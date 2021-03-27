@@ -10,7 +10,7 @@ import os
 from fileio import filename, move
 
 
-def check_task(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry):
+def check_task(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry, hashing=True):
     if image not in hashes:
         img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
 
@@ -28,10 +28,11 @@ def check_task(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_
             return
 
         # Hash image.
-        hashes[image] = str(dhash(Image.open(image)))
+        if hashing:
+            hashes[image] = str(dhash(Image.open(image)))
 
 
-def check_images(path, under_res, too_blurry, RESOLUTION_THRESHOLD=307200, BLURRINESS_THRESHOLD=125):
+def check_images(path, under_res, too_blurry, RESOLUTION_THRESHOLD=307200, BLURRINESS_THRESHOLD=125, hashing=True):
     print("CHECKING IMAGES FOR UNDER RESOLUTION, BLURRINESS, AND IF PASSED, HASHING:")
     if os.path.isfile("logs/hashes.json"):
         with open("logs/hashes.json", "r") as infile:
@@ -41,7 +42,7 @@ def check_images(path, under_res, too_blurry, RESOLUTION_THRESHOLD=307200, BLURR
 
     images = glob(path+"*.jpg", recursive=True)
     Parallel(n_jobs=24, prefer="threads")(
-        delayed(check_task)(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry) for image in tqdm(images)
+        delayed(check_task)(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry, hashing=hashing) for image in tqdm(images)
     )
 
     # Save all hashes.

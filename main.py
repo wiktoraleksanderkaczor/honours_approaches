@@ -35,7 +35,8 @@ OPTIONS (Recommended steps ordered will be in [N] format):
 	6. OpenMVG Feature Detection and Matching
 	7. OpenMVG Reconstruct model
 	8. OpenMVG Georegister Model
-	9. OpenMVG Localise normal images and videos, plus unused cleared GPS images, for refinement.
+	9. OpenMVG Localise normal images and videos, plus unused cleared GPS images, for refinement, 
+		and accuracy checking.
 	10. Reconstruct with localised images, and video frames if any. (REFINEMENT)
 	11. Replace original with refinement.
 	12. Move everything to "reconstructions" folder 
@@ -209,19 +210,25 @@ def handle_choice(choice):
                 create_folder("./video/extracted/{}/".format(no_ext))
                 cmd = """ffmpeg -i {} -r {} ./video/extracted/{}/{}_%05d.jpg""".format(video, FRAMES_PER_SECOND, no_ext, no_ext)
                 os.system(cmd)
-            
-            for folder in glob("video/extracted/*"):
+
+            from images import check_images
+            for folder in glob("video/extracted/*"):      
+                # Remove bad frames, do not hash frames
+                check_images(folder+"/", "intermediate/too_small/", "intermediate/too_blurry/",
+                     RESOLUTION_THRESHOLD=PIXEL_NUM_THRESHOLD, BLURRINESS_THRESHOLD=BLURRINESS_THRESHOLD, hashing=False)
+                
                 for frame in glob(folder + "/*"):
                     output = "openMVG/localization_images/" + filename(frame)
                     if not os.path.isfile(output):
                         copy(frame, output)
 
-        # Copy over rest of images to localise
-        for img in glob("intermediate/images/*"):
+        # Copy over N biggest of images to localise
+        sorted_by_size = sorted(glob("intermediate/images/*"), key=os.path.getsize, reverse=True)[:ONLY_N_BIGGEST]
+        for img in sorted_by_size:
             output = "openMVG/localization_images/" + filename(img)
             if not os.path.isfile(output):
                 copy(img, output)
-        
+
         cmd = \
         """
 		openMVG_main_SfM_Localization \
@@ -265,8 +272,9 @@ def handle_choice(choice):
             openMVG_main_ComputeFeatures \
                 -i openMVG/refinement/init/sfm_data.json \
                 -o openMVG/refinement/data \
+                -p {} \
                 -n {}
-            """.format(cpu_count()),
+            """.format(REFINEMENT_DESCRIBER_PRESET, cpu_count()),
         
             """
             openMVG_main_ListMatchingPairs \

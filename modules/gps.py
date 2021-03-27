@@ -278,20 +278,21 @@ def export_gps_to_file(georeference, output="openMVG/"):
     with open(output + no_ext + "_positions.json", "w") as outfile:
         json.dump(recovered, outfile, indent=4)
 
+import write_gps
 
 def gps_to_img_task(img, val, workspace_folder, new_gps_images_folder):
     try:
         lat, lon, alt = val["lat"], val["lon"], val["alt"]
         img_path = glob(workspace_folder + "/**/" + img)[0]
-        photo = gpsphoto.GPSPhoto(img_path)
-        info = gpsphoto.GPSInfo((lat, lon), alt=int(alt))
+        photo = write_gps.GPSPhoto(img_path)
+        info = write_gps.GPSInfo((lat, lon), alt=int(alt))
         # Try to write with new GPS, fallback to just copying it over.
         try:
             photo.modGPSData(info, new_gps_images_folder + img)
         except:
             copy(img_path, new_gps_images_folder + img)
     except Exception as e:
-        print(e)
+        print(img, e)
 
 
 def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_folder="openMVG/localization_images_new_gps/"):
@@ -305,7 +306,6 @@ def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_
             for img, val in tqdm(data.items()) \
             if not os.path.isfile(new_gps_images_folder + img)
     )
-
 
 
 def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None):

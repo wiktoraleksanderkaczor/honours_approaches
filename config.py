@@ -27,10 +27,14 @@ NUM_GPS_IMAGES = 10
 DESCRIBER_PRESET = "NORMAL"
 
 # Refinement reconstruction using localised images.
-IMAGES_CLUSTER_NUM = 50 
+IMAGES_CLUSTER_NUM = 60
+ONLY_N_BIGGEST = 500
 # Video links, can be empty.
 VIDEO_LINKS = ["https://www.youtube.com/watch?v=yJc3_F8dEcE", "https://youtu.be/dIVq7RFZg7o"]
-FRAMES_PER_SECOND = 2
+FRAMES_PER_SECOND = 1
+
+# NORMAL or HIGH
+REFINEMENT_DESCRIBER_PRESET = "HIGH"
 
 # The GPS location for the subject of choice.
 geolocator = Nominatim(user_agent="honours_dissertation-wiktor_kaczor")
