@@ -41,19 +41,21 @@ def links_from_flickr(topic):
                          sort='relevance')  # we want what we are looking for to appear first
 
     counter = 0
-    for photo in photos:
-        got_photo = False
-        for i in range(len(SIZES)):  # makes sure the loop is done in the order we want
-            url = photo.get(SIZES[i])
-            if url:  # if url is None try with the next size
-                yield url
-                got_photo = True
-                break
-        if not got_photo:
-            counter += 1
-        if counter >= 100:
-            return
-
+    try:
+        for photo in photos:
+            got_photo = False
+            for i in range(len(SIZES)):  # makes sure the loop is done in the order we want
+                url = photo.get(SIZES[i])
+                if url:  # if url is None try with the next size
+                    yield url
+                    got_photo = True
+                    break
+            if not got_photo:
+                counter += 1
+            if counter >= 100:
+                return
+    except Exception as e:
+        print(e)
 
 def download_task(link, tracker, folder):
     link_hash = str(md5(link.encode("utf-8")).hexdigest())

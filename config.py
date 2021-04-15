@@ -2,9 +2,9 @@ from geopy.geocoders import Nominatim
 
 
 # The topic for the reconstruction.
-TOPIC = "Edinburgh Castle"
+TOPIC = "Palace of Versailles Outside"
 #GEO_TOPIC = "St Giles Cathedral"
-GEO_TOPIC = "Edinburgh Castle"
+GEO_TOPIC = "Palace of Versailles"
 
 # Number of metres around the GPS location of the subject to be considered valid GPS.
 METRES_RADIUS_THRESHOLD = 750
@@ -19,9 +19,9 @@ PIXEL_NUM_THRESHOLD = 307200
 CLOSE_IMAGE_THRESHOLD = 5
 
 # Number of images (separate from GPS ones) to be passed to openMVG.
-NUM_LARGEST_IMAGES = 300
+NUM_LARGEST_IMAGES = 500
 # Number of GPS images (separate from above) to be passed to openMVG.
-NUM_GPS_IMAGES = 10
+NUM_GPS_IMAGES = 15
 
 # NORMAL or HIGH
 DESCRIBER_PRESET = "NORMAL"
@@ -30,7 +30,7 @@ DESCRIBER_PRESET = "NORMAL"
 IMAGES_CLUSTER_NUM = 60
 ONLY_N_BIGGEST = 500
 # Video links, can be empty.
-VIDEO_LINKS = ["https://www.youtube.com/watch?v=yJc3_F8dEcE", "https://youtu.be/dIVq7RFZg7o"]
+VIDEO_LINKS = []
 FRAMES_PER_SECOND = 1
 
 # NORMAL or HIGH

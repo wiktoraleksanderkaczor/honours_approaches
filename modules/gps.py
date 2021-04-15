@@ -204,16 +204,20 @@ def select_and_copy_GPS_images(data_dir, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_I
         json.dump(images_used, outfile, indent=4)
 
 
-def convert_to_kml(georeference, output="openMVG/positions.kml"):
+def convert_to_kml(georeference, output="openMVG/positions.kml", gps_data=None):
     with open(georeference, "r") as infile:
         data = json.load(infile)
 
     kml = simplekml.Kml()
 
+    if gps_data:
+        gps_data_from_images = json.load(open(gps_data, "r"))
+        data = {key: value for key, value in data.items() if key in gps_data_from_images.keys()}
+
     for key, values in data.items():
         #https://simplekml.readthedocs.io/en/latest/geometries.html
         #https://simplekml.readthedocs.io/en/latest/constants.html#simplekml.AltitudeMode
-        kml.newpoint(name=key, coords=[(values["lon"], values["lat"], values["alt"])], altitudemode="absolute")
+        kml.newpoint(name=key, coords=[(values["lon"], values["lat"], values["alt"])])
 
     kml.save(output)
 
@@ -308,7 +312,7 @@ def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_
     )
 
 
-def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None):
+def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None, not_georeferencing="logs/not_used_for_georeferencing.json"):
     # Ground truth
     with open(gps_data, "r") as infile:
         actual = json.load(infile)
@@ -322,7 +326,7 @@ def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=Non
         geo_positions = json.load(infile)
     localised_images = [img for img in localised.keys() if img not in geo_positions.keys()]
 
-    with open("logs/not_used_for_georeferencing.json", "r") as infile:
+    with open(not_georeferencing, "r") as infile:
         not_used_for_georeferencing = json.load(infile) 
     not_used_for_georeferencing = [filename(img) for img in not_used_for_georeferencing]
 

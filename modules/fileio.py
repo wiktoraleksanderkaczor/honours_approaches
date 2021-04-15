@@ -14,6 +14,8 @@ dirs = [
     "intermediate/too_small",
     "openMVG/images",
     "openMVG/localization_images",
+    "openMVG/refine_localization_output",
+    "openMVG/refine_localization_images",
     "openMVG/refinement",
     "reconstructions/",
     "logs/",
