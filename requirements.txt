@@ -1,4 +1,4 @@
-#python=3.6
+#python=3.8
 opencv-python
 youtube-dl
 imagehash
@@ -9,6 +9,7 @@ exifread
 pyopencl
 gpsphoto
 requests
+joblib
 piexif
 pillow
 geopy

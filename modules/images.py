@@ -2,6 +2,7 @@ from glob import glob
 from tqdm import tqdm
 import cv2
 from joblib import Parallel, delayed
+from multiprocessing import cpu_count
 from imagehash import dhash, hex_to_hash
 from pathlib import Path
 from PIL import Image
@@ -41,7 +42,7 @@ def check_images(path, under_res, too_blurry, RESOLUTION_THRESHOLD=307200, BLURR
         hashes = {}
 
     images = glob(path+"*.jpg", recursive=True)
-    Parallel(n_jobs=24, prefer="threads")(
+    Parallel(n_jobs=cpu_count(), prefer="threads")(
         delayed(check_task)(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry, hashing=hashing) for image in tqdm(images)
     )
 

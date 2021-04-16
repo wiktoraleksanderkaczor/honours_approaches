@@ -40,6 +40,7 @@ OPTIONS (Recommended steps ordered will be in [N] format):
 	11. Replace original with refinement.
 	12. Move everything to "reconstructions" folder 
 	13. Merge reconstructions dialog
+	14. Run one reconstruction, no refinement or merging, and store.
 	-1. EXIT
 """
 
@@ -88,6 +89,8 @@ def handle_choice(choice):
         from gps import remove_exif
         remove_exif("intermediate/good_gps/",
                     "intermediate/cleared_gps/")
+        remove_exif("intermediate/some_gps/",
+                    "intermediate/cleared_some_gps/")
 
     elif choice == 5:
         from gps import select_and_copy_GPS_images
@@ -98,6 +101,7 @@ def handle_choice(choice):
                                    "openMVG/images/")
 
         localization_images = glob("intermediate/good_gps/*.jpg")
+        some_gps_images = glob("intermediate/some_gps/*.jpg")
 
         with open("logs/images_for_georeferencing.json", "r") as infile:
             used_for_georeferencing = json.load(infile)
@@ -108,6 +112,9 @@ def handle_choice(choice):
             if image not in used_for_georeferencing:
                 copy("intermediate/cleared_gps/"+filename(image), "openMVG/localization_images/" + filename(image))
                 not_used_for_georeferencing.append(image)
+
+        for image in some_gps_images:
+            copy("intermediate/cleared_some_gps/"+filename(image), "openMVG/some_gps_localization/" + filename(image))
         
         with open("logs/not_used_for_georeferencing.json", "w+") as outfile:
             json.dump(not_used_for_georeferencing, outfile, indent=4)
@@ -220,7 +227,7 @@ def handle_choice(choice):
                      output="openMVG/localised_accuracy.json")
 
         from gps import convert_to_kml
-        convert_to_kml(georeference="openMVG/sfm_data_geo_positions.json", gps_data="intermediate/gps_data_from_images.json")
+        convert_to_kml(georeference="openMVG/sfm_data_expanded_positions.json", gps_data="openMVG/localised_accuracy.json")
     
     elif choice == 10:
         from fileio import copy
@@ -348,6 +355,9 @@ def handle_choice(choice):
     elif choice == 13:
         from sfm_data import merge_reconstructions
         merge_reconstructions()
+
+    elif choice == 14:
+        handle_choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 12])
 
     elif choice == -1:
         exit(0)

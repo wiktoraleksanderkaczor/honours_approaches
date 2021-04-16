@@ -1,5 +1,7 @@
+from multiprocessing import cpu_count
 from joblib import Parallel, delayed
 from hashlib import md5
+from glob import glob
 from tqdm import tqdm
 import flickrapi
 import requests
@@ -78,6 +80,18 @@ def download_task(link, tracker, folder):
                 print(path, "-", e)
 
 
+def should_continue(links, threshold=500):
+    current_num_images = len(glob("intermediate/images/*"))
+    if current_num_images <= should_continue.num_images:
+        should_continue.iter_no_download += 1
+    else:
+        should_continue.iter_no_download = 0
+        should_continue.num_images = current_num_images
+
+    if should_continue.iter_no_download >= threshold:
+        links.close()
+
+
 def download(links, folder):
     print("DOWNLOADING IMAGES FROM FLICKR:")
     if os.path.isfile("./logs/download_log_flickr.json"):
@@ -86,9 +100,12 @@ def download(links, folder):
     else:
         tracker = {"failed": {}, "succeeded": {}, "len": 0}
 
-    Parallel(n_jobs=24, prefer="threads")(
-        delayed(download_task)(link, tracker, folder) for link in tqdm(links)
+    should_continue.iter_no_download = 0
+    should_continue.num_images = len(glob("intermediate/images/*"))
+    Parallel(n_jobs=cpu_count(), prefer="threads")(
+        delayed(download_task)(link, tracker, folder) for link in tqdm(links) if should_continue(links, threshold=100)
     )
+    print("Downloaded {} images".format(len(glob("intermediate/images/*"))))
 
     with open("./logs/download_log_flickr.json", "w+") as outfile:
         json.dump(tracker, outfile, indent=4)

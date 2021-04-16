@@ -1,3 +1,4 @@
+from multiprocessing import cpu_count
 from fileio import create_folder, filename, copy
 from joblib import Parallel, delayed
 from cmath import cos, sin, pi
@@ -128,18 +129,23 @@ def get_gps(data_dir, some_gps, good_gps, bad_gps, location, METRES_THR=500):
     for item in incorrect_items.keys():
         move(item, bad_gps + filename(item))
 
-    to_save = {}
+    good_gps_to_save = {}
+    some_gps_to_save = {}
     for item in correct_items.keys():
         fname = filename(item)
         # If image has bearing tag.
         if images_with_gps[item]["bearing"]:
             move(item, good_gps + fname)
-            to_save[fname] = images_with_gps[item]
+            good_gps_to_save[fname] = images_with_gps[item]
         else:
             move(item, some_gps + fname)
+            some_gps_to_save[fname] = images_with_gps[item]
 
     with open("intermediate/gps_data_from_images.json", "w") as outfile:
-        json.dump(to_save, outfile, indent=4)
+        json.dump(good_gps_to_save, outfile, indent=4)
+
+    with open("intermediate/some_gps_data_from_images.json", "w") as outfile:
+        json.dump(some_gps_to_save, outfile, indent=4)
 
 
 def remove_exif(some_gps, cleared_gps):
@@ -262,20 +268,18 @@ def export_gps_to_file(georeference, output="openMVG/"):
     with open(georeference) as f:
         data = json.load(f)
 
-    key_to_filename = {}
-    for view in data["views"]:
-        key_to_filename[view["key"]
-                        ] = view["value"]["ptr_wrapper"]["data"]["filename"]
-
-    key_to_gps = {}
-    for ext in data["extrinsics"]:
-        key_to_gps[ext["key"]] = ext["value"]["center"]
-
+    key_to_fname = {
+        view["value"]["ptr_wrapper"]["data"]["id_pose"]: view["value"]["ptr_wrapper"]["data"]["filename"] \
+        for view in data["views"]}
+    
+    fname_to_gps = {key_to_fname[ext["key"]]: ext["value"]["center"] \
+        for ext in data["extrinsics"]}
+    
     recovered = {}
-    for key in key_to_gps.keys():
-        x, y, z = key_to_gps[key][0], key_to_gps[key][1], key_to_gps[key][2]
+    for key in fname_to_gps.keys():
+        x, y, z = fname_to_gps[key][0], fname_to_gps[key][1], fname_to_gps[key][2]
         lat, lon, alt = ecef2lla(x, y, z)
-        recovered[key_to_filename[key]] = {"lat": lat[0][0], "lon": lon[0][0], "alt": alt[0][0]}
+        recovered[key] = {"lat": lat[0][0], "lon": lon[0][0], "alt": alt[0][0]}
         #print(key_to_filename[key], lat[0][0], lon[0][0])
 
     no_ext = filename(georeference).split(".")[-2]
@@ -305,7 +309,7 @@ def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_
 
     create_folder(new_gps_images_folder)
     print("WRITING GPS TO IMAGES")
-    Parallel(n_jobs=24, prefer="threads")(
+    Parallel(n_jobs=cpu_count(), prefer="threads")(
         delayed(gps_to_img_task)(img, val, workspace_folder, new_gps_images_folder) \
             for img, val in tqdm(data.items()) \
             if not os.path.isfile(new_gps_images_folder + img)

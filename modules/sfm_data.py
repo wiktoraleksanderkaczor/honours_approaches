@@ -288,130 +288,76 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
     # Error while trying to deserialize a polymorphic pointer. Could not find type id 1
     # The input SfM_Data file "openMVG/output/sfm_data.json" cannot be read.
     # """
-    if images_to_remove:
-        with open(sfm_data, "r") as infile:
-            data = json.load(infile)
-
-        remove = []
-        for view in data["views"]:
-            img_data = view["value"]["ptr_wrapper"]["data"] 
-            if img_data["filename"] in images_to_remove:
-                if view not in remove:
-                    remove.append(view)
-
-        data["views"] = [view for view in data["views"] if view not in remove]
-
-        # Extrinsics removal depends on views, and views on extrinsics, the rest depend on views
-        data = remove_unused_views(data)
-        data = remove_unused_intrinsics(data)
-        data = remove_unused_extrinsics(data)
-        data = remove_unused_structures(data)
-        data = clean_up_order(data)
-
-        with open(sfm_data, "w+") as outfile:
-            json.dump(data, outfile, indent=4)
-
-
-def remove_unused_views(sfm_data_json):
-    # Remove if it view doesn't have a reconstructed pose.
-    remove = []
-    pose_keys = [extrinsic["key"] for extrinsic in sfm_data_json["extrinsics"]]
-    for view in sfm_data_json["views"]:
-        if view["value"]["ptr_wrapper"]["data"]["id_pose"] not in pose_keys:
-            remove.append(view)
-    
-    sfm_data_json["views"] = [view for view in sfm_data_json["views"] if view not in remove]
-    return sfm_data_json
-
-def remove_unused_intrinsics(sfm_data_json):
-    # Remove if extrinsics aren't featured in views.
-    remove = []
-    view_intrinsic_keys = [view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] for view in sfm_data_json["views"]]
-    for intrinsic in sfm_data_json["intrinsics"]:
-        if intrinsic["key"] not in view_intrinsic_keys:
-            if intrinsic not in remove:
-                remove.append(intrinsic)
-    
-    sfm_data_json["intrinsics"] = [intrinsic for intrinsic in sfm_data_json["intrinsics"] if intrinsic not in remove]
-    return sfm_data_json
-
-
-def remove_unused_extrinsics(sfm_data_json):
-    # Remove if extrinsics aren't featured in views.
-    remove = []
-    view_pose_keys = [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in sfm_data_json["views"]]
-    for extrinsic in sfm_data_json["extrinsics"]:
-        if extrinsic["key"] not in view_pose_keys:
-            if extrinsic not in remove:
-                remove.append(extrinsic)
-    
-    sfm_data_json["extrinsics"] = [extrinsic for extrinsic in sfm_data_json["extrinsics"] if extrinsic not in remove]
-    return sfm_data_json
-
-
-def remove_unused_structures(sfm_data_json):
-    view_keys = [view["key"] for view in sfm_data_json["views"]]
-    for structure in sfm_data_json["structure"]:
-        remove = []
-        for observation in structure["value"]["observations"]:
-            if observation["key"] not in view_keys:
-                if observation not in remove:
-                    remove.append(observation)
-
-        if remove:
-            structure["value"]["observations"] = [observation for observation in structure["value"]["observations"] if observation not in remove]
-    
-    # find a point has fewer than 2 views and remove them
-    sfm_data_json["structure"][:] = [sfm_data_json["structure"][i] for i in range(0,len(sfm_data_json["structure"])) if len(sfm_data_json["structure"][i]["value"]["observations"]) >= 2]
-    return sfm_data_json
-
-
-def clean_up_order(sfm_data_json):
-    # Get the mapping
-    filename_to_ids = {}
-    for view in sfm_data_json["views"]:
-        filename = view["value"]["ptr_wrapper"]["data"]["filename"]
-        id_view = view["value"]["ptr_wrapper"]["data"]["id_view"]
-        id_intrinsic = view["value"]["ptr_wrapper"]["data"]["id_intrinsic"]
-        id_pose =  view["value"]["ptr_wrapper"]["data"]["id_pose"]
-        filename_to_ids[filename] = {"id_view": id_view, "id_intrinsic": id_intrinsic, "id_pose": id_pose}
+    with open(sfm_data, "r") as infile:
+        data = json.load(infile)
 
     from copy import deepcopy
-    filename_to_ids = deepcopy(filename_to_ids)
+    # Get mapping for all old values
+    old_mapping = {}
+    for view in data["views"]:
+        img_data = view["value"]["ptr_wrapper"]["data"] 
+        old_mapping[img_data["filename"]] = {"id_view": img_data["id_view"], "id_intrinsic": img_data["id_intrinsic"], "id_pose": img_data["id_pose"]}
 
-    # Change intrinsics order, save in "filename_to_ids"
-    for counter, intrinsic in zip(range(len(sfm_data_json["intrinsics"])), sfm_data_json["intrinsics"]):
-        if intrinsic["key"] != counter:
-            for _, value in filename_to_ids.items():
-                if value["id_intrinsic"] == intrinsic["key"]:
-                    value["id_intrinsic"] = counter
-            intrinsic["key"] = counter
+    old_mapping = deepcopy(old_mapping)
+    keys = {}
+    keys["view_keys"] = [view["key"] for view in data["views"]]
+    keys["intrinsics_keys"] = [intrinsic["key"] for intrinsic in data["intrinsics"]]
+    keys["extrinsics_keys"] = [extrinsic["key"] for extrinsic in data["extrinsics"]]
+    keys = deepcopy(keys)
 
-    # Change extrinsics order, save in "filename_to_ids"
-    for counter, extrinsic in zip(range(len(sfm_data_json["extrinsics"])), sfm_data_json["extrinsics"]):
-        if extrinsic["key"] != counter:
-            for _, value in filename_to_ids.items():
-                if value["id_pose"] == extrinsic["key"]:
-                    value["id_pose"] = counter
-            extrinsic["key"] = counter
+    # Get all filenames and view_id to remove, by bad altitude and unused in reconstruction.
+    views_to_remove = [val["id_view"] for key, val in old_mapping.items() \
+        if val["id_pose"] not in keys["extrinsics_keys"] \
+            or key in images_to_remove]
 
-    # Change views order and "id_view" using "filename_to_ids", save mapping from old id to new id in "old_to_new"
-    old_to_new_view_id = {}
-    counter = 0
-    for counter, view in zip(range(len(sfm_data_json["views"])), sfm_data_json["views"]):
-        old_to_new_view_id[view["key"]] = counter
-        if view["key"] != counter:
-            filename = view["value"]["ptr_wrapper"]["data"]["filename"]
-            view["key"] = counter
-            view["value"]["ptr_wrapper"]["data"]["id_view"] = counter
-            view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] = filename_to_ids[filename]["id_intrinsic"]
-            view["value"]["ptr_wrapper"]["data"]["id_pose"] = filename_to_ids[filename]["id_pose"]
+    # Get all intrinsics to remove by views to remove.
+    # Extrinsics should remain untouched, except for changing key ordering later.
+    intrinsics_to_remove = [val["id_intrinsic"] for key, val in old_mapping.items() if val["id_view"] in views_to_remove]
+    # Check intrinsics isn't used by another view
+    intrinsics_to_remove = [id_intrinsic for id_intrinsic in intrinsics_to_remove if id_intrinsic not in \
+        [val["id_intrinsic"] for key, val in old_mapping.items() if val["id_view"] not in views_to_remove]]
+    
+    # Remove all unnecessary things by view keys to remove.
+    data["views"] = [view for view in data["views"] if view["key"] not in views_to_remove]
+    data["intrinsics"] = [intrinsic for intrinsic in data["intrinsics"] if intrinsic["key"] not in intrinsics_to_remove]
+    
+    # Set intrinsic keys according to position, store old mapping
+    old_to_new_intrinsics = {}
+    for intrinsic in data["intrinsics"]:
+        new_intrinsic_key = data["intrinsics"].index(intrinsic)
+        old_to_new_intrinsics[deepcopy(intrinsic["key"])] = new_intrinsic_key
+        intrinsic["key"] = new_intrinsic_key
+        intrinsic["value"]["polymorphic_id"] = 2147483649
+        intrinsic["value"]["polymorphic_name"] = "pinhole_radial_k3"
 
-    sfm_data_json = remove_unused_intrinsics(sfm_data_json)
 
-    # Change structure mapping, using "old_to_new"
-    for structure in sfm_data_json["structure"]:
+    # Rewrite view and intrinsics ordering, keeping track of changed view_ids
+    changes_view_ids = {}
+    cereal_pntr = 2147483649
+    for view in data["views"]:
+        num = data["views"].index(view)
+        changes_view_ids[deepcopy(view["key"])] = num
+        view["key"] = num
+        # Saves need for counter
+        view["value"]["ptr_wrapper"]["id"] = cereal_pntr
+        view["value"]["ptr_wrapper"]["data"]["id_view"] = num
+        view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] = old_to_new_intrinsics[view["value"]["ptr_wrapper"]["data"]["id_intrinsic"]]
+        cereal_pntr += 1
+
+    for intrinsic in data["intrinsics"]:
+        intrinsic["value"]["ptr_wrapper"]["id"] = cereal_pntr
+        cereal_pntr += 1
+
+    # Removing structures referencing those removed views and updating old view mapping.
+    for structure in data["structure"]:
         for observation in structure["value"]["observations"]:
-            observation["key"] = old_to_new_view_id[observation["key"]]
-    return sfm_data_json
+            if observation["key"] in views_to_remove:
+                structure["value"]["observations"].remove(observation)
+            else:
+                observation["key"] = changes_view_ids[observation["key"]]
 
+    # find a point has fewer than 2 views and remove them
+    data["structure"][:] = [data["structure"][i] for i in range(0,len(data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
+
+    with open(sfm_data, "w+") as outfile:
+        json.dump(data, outfile, indent=4)

@@ -2,9 +2,8 @@ from geopy.geocoders import Nominatim
 
 
 # The topic for the reconstruction.
-TOPIC = "Palace of Versailles Outside"
-#GEO_TOPIC = "St Giles Cathedral"
-GEO_TOPIC = "Palace of Versailles"
+TOPIC = "Stonehenge"
+GEO_TOPIC = "Stonehenge"
 
 # Number of metres around the GPS location of the subject to be considered valid GPS.
 METRES_RADIUS_THRESHOLD = 750
