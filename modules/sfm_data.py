@@ -97,6 +97,7 @@ def merge_reconstructions(a=None, b=None):
     create_folder("reconstructions/" + merge_name + "/openMVG/")
     create_folder("reconstructions/" + merge_name + "/openMVG/" + "data/")
     create_folder("reconstructions/" + merge_name + "/openMVG/" + "localization_images/")
+    create_folder("reconstructions/" + merge_name + "/openMVG/" + "some_gps_localization/")
     create_folder("reconstructions/" + merge_name + "/openMVG/" + "output/")
     create_folder("reconstructions/" + merge_name + "/intermediate/")
 
@@ -131,6 +132,15 @@ def merge_reconstructions(a=None, b=None):
     for img in localisation_two:
         copy(img, "reconstructions/" + merge_name + "/openMVG/localization_images/" + filename(img))
 
+    some_gps_one = glob(a+"/openMVG/some_gps_localization/*")
+    some_gps_two = glob(b+"/openMVG/some_gps_localization/*")
+
+    for img in localisation_one:
+        copy(img, "reconstructions/" + merge_name + "/openMVG/some_gps_localization/" + filename(img))
+
+    for img in localisation_two:
+        copy(img, "reconstructions/" + merge_name + "/openMVG/some_gps_localization/" + filename(img))
+
     with open(a+"/intermediate/gps_data_from_images.json", "r") as infile:
         gps1 = json.load(infile)
 
@@ -142,8 +152,23 @@ def merge_reconstructions(a=None, b=None):
         merged_gps[key] = val
     for key, val in gps2.items():
         merged_gps[key] = val
-
+    
     with open("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json", "w+") as outfile:
+        json.dump(merged_gps, outfile, indent=4)
+
+    with open(a+"/intermediate/some_gps_data_from_images.json", "r") as infile:
+        gps1 = json.load(infile)
+
+    with open(b+"/intermediate/some_gps_data_from_images.json", "r") as infile:
+        gps2 = json.load(infile)
+
+    merged_gps = {}
+    for key, val in gps1.items():
+        merged_gps[key] = val
+    for key, val in gps2.items():
+        merged_gps[key] = val
+
+    with open("reconstructions/" + merge_name + "/intermediate/some_gps_data_from_images.json", "w+") as outfile:
         json.dump(merged_gps, outfile, indent=4)
 
     # Merge the actual "sfm_data".
@@ -173,6 +198,15 @@ def merge_reconstructions(a=None, b=None):
         --out_dir reconstructions/{}/openMVG/localization_output \
         --query_image_dir reconstructions/{}/openMVG/localization_images \
         --numThreads {}
+    """.format(merge_name, merge_name, merge_name, merge_name, cpu_count()),
+    
+    """
+    openMVG_main_SfM_Localization \
+        -i reconstructions/{}/openMVG/output/sfm_data_geo.bin \
+        --match_dir reconstructions/{}/openMVG/data \
+        --out_dir reconstructions/{}/openMVG/some_gps_localization_output \
+        --query_image_dir reconstructions/{}/openMVG/some_gps_localization/ \
+        --numThreads {}
     """.format(merge_name, merge_name, merge_name, merge_name, cpu_count())
     ]
     for cmd in commands:
@@ -185,24 +219,32 @@ def merge_reconstructions(a=None, b=None):
     export_gps_to_file(
         georeference="reconstructions/" + merge_name + "/openMVG/localization_output/sfm_data_expanded.json", \
         output="reconstructions/" + merge_name + "/openMVG/")
+    export_gps_to_file(
+        georeference="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/sfm_data_expanded.json", \
+            output="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/")
 
-    with open(a + "/logs/not_used_for_georeferencing.json", "r") as infile:
+    with open(a + "/logs/used_for_georeferencing.json", "r") as infile:
         not_used_for_geo1 = json.load(infile)
 
-    with open(b + "/logs/not_used_for_georeferencing.json", "r") as infile:
+    with open(b + "/logs/used_for_georeferencing.json", "r") as infile:
         not_used_for_geo2 = json.load(infile)
 
-    with open("reconstructions/" + merge_name + "/logs/not_used_for_georeferencing.json") as outfile:
+    with open("reconstructions/" + merge_name + "/logs/used_for_georeferencing.json") as outfile:
         merged_not_used_for_geo = not_used_for_geo1 + not_used_for_geo2
         json.dump(merged_not_used_for_geo, outfile, indent=4)
-
 
     from gps import get_accuracy
     get_accuracy("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json",
                     "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
                     "reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
                     output="reconstructions/" + merge_name + "/localised_accuracy.json"
-                    "reconstructions/" + merge_name + "/logs/not_used_for_georeferencing.json")
+                    "reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
+
+    get_accuracy("reconstructions/" + merge_name + "/intermediate/some_gps_data_from_images.json",
+                "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
+                "reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
+                output="reconstructions/" + merge_name + "/some_gps_localised_accuracy.json",
+                "reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
 
     from gps import convert_to_kml
     convert_to_kml(georeference="reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json", \

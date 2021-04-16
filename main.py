@@ -203,7 +203,7 @@ def handle_choice(choice):
             os.system(cmd)
 
     elif choice == 9:
-        cmd = \
+        commands = [
         """
 		openMVG_main_SfM_Localization \
 			-i openMVG/output/sfm_data_geo.bin \
@@ -211,23 +211,40 @@ def handle_choice(choice):
 			--out_dir openMVG/localization_output/ \
 			--query_image_dir openMVG/localization_images/ \
 			--numThreads {}
-		""".format(cpu_count())
+		""".format(cpu_count()),
 
-        os.system(cmd)
+        """
+		openMVG_main_SfM_Localization \
+			-i openMVG/output/sfm_data_geo.bin \
+			--match_dir openMVG/data \
+			--out_dir openMVG/some_gps_localization_output/ \
+			--query_image_dir openMVG/some_gps_localization/ \
+			--numThreads {}
+		""".format(cpu_count())
+        ]
+
+        for cmd in commands:
+            os.system(cmd)
 
         from gps import export_gps_to_file
         export_gps_to_file(georeference="openMVG/output/sfm_data_geo.json")
         export_gps_to_file(
             georeference="openMVG/localization_output/sfm_data_expanded.json")
+        export_gps_to_file(georeference="openMVG/some_gps_localization_output/sfm_data_expanded.json", output="openMVG/some_gps_localization_output/")
 
         from gps import get_accuracy
         get_accuracy("intermediate/gps_data_from_images.json",
                      "openMVG/sfm_data_geo_positions.json",
                      "openMVG/sfm_data_expanded_positions.json",
                      output="openMVG/localised_accuracy.json")
+        get_accuracy("intermediate/some_gps_data_from_images.json",
+                    "openMVG/sfm_data_geo_positions.json",
+                    "openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
+                    output="openMVG/some_gps_localised_accuracy.json")
 
         from gps import convert_to_kml
         convert_to_kml(georeference="openMVG/sfm_data_expanded_positions.json", gps_data="openMVG/localised_accuracy.json")
+        convert_to_kml(georeference="openMVG/some_gps_localization_output/sfm_data_expanded_positions.json", output="openMVG/some_gps_positions.kml", gps_data="openMVG/some_gps_localised_accuracy.json")
     
     elif choice == 10:
         from fileio import copy

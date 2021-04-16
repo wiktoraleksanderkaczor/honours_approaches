@@ -16,6 +16,7 @@ dirs = [
     "openMVG/images",
     "openMVG/localization_images",
     "openMVG/some_gps_localization",
+    "openMVG/some_gps_localization_output",
     "openMVG/refine_localization_output",
     "openMVG/refine_localization_images",
     "openMVG/refinement",

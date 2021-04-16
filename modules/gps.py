@@ -316,7 +316,7 @@ def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_
     )
 
 
-def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None, not_georeferencing="logs/not_used_for_georeferencing.json"):
+def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=None, georeferencing="logs/images_for_georeferencing.json"):
     # Ground truth
     with open(gps_data, "r") as infile:
         actual = json.load(infile)
@@ -330,29 +330,37 @@ def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=Non
         geo_positions = json.load(infile)
     localised_images = [img for img in localised.keys() if img not in geo_positions.keys()]
 
-    with open(not_georeferencing, "r") as infile:
-        not_used_for_georeferencing = json.load(infile) 
-    not_used_for_georeferencing = [filename(img) for img in not_used_for_georeferencing]
+    with open(georeferencing, "r") as infile:
+        used_for_georeferencing = json.load(infile) 
+    used_for_georeferencing = [filename(img) for img in used_for_georeferencing]
 
     newly_localised = {}
     sum_error = 0
     for key in localised.keys():
         # Image not used for georeferencing but as the only images used for localisation were those with GPS cleared... The image has accurate GPS.
-        if key in actual.keys() and key in localised_images and key in not_used_for_georeferencing:
+        if key in actual.keys() and key in localised_images and key not in used_for_georeferencing:
             lat1, lat2 = localised[key]["lat"], actual[key]["lat"]
             lon1, lon2 = localised[key]["lon"], actual[key]["lon"]
-            alt1, alt2 = localised[key]["alt"], actual[key]["alt"]
             lat_distance = lat1 - lat2
             lon_distance = lon1 - lon2
-            alt_distance = alt1 - alt2
+
+            # Only do altitude for images that have them
+            if "alt" in localised[key]:
+                alt1, alt2 = localised[key]["alt"], actual[key]["alt"]
+                alt_distance = alt1 - alt2
+
             metres_distance = measure(lat1, lon1, lat2, lon2)
             sum_error += metres_distance
             newly_localised[key] = {
-                "actual": {"lat": lat2, "lon": lon2, "alt": alt2},
-                "localised": {"lat": lat1, "lon": lon1, "alt": alt1},
-                "change_in_coords": {"lat_change": lat_distance, "lon_change": lon_distance, "alt_change": alt_distance},
+                "actual": {"lat": lat2, "lon": lon2},
+                "localised": {"lat": lat1, "lon": lon1},
+                "change_in_coords": {"lat_change": lat_distance, "lon_change": lon_distance},
                 "metres_distance_from_actual": metres_distance
             }
+            if "alt" in localised[key]:
+                newly_localised[key]["actual"]["alt"] = alt2
+                newly_localised[key]["localised"]["alt"] = alt1
+                newly_localised[key]["change_in_coords"]["alt_change"] = alt_distance
 
     newly_localised["sum_error"] = sum_error
 
