@@ -224,14 +224,14 @@ def merge_reconstructions(a=None, b=None):
             output="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/")
 
     with open(a + "/logs/used_for_georeferencing.json", "r") as infile:
-        not_used_for_geo1 = json.load(infile)
+        used_for_geo1 = json.load(infile)
 
     with open(b + "/logs/used_for_georeferencing.json", "r") as infile:
-        not_used_for_geo2 = json.load(infile)
+        used_for_geo2 = json.load(infile)
 
     with open("reconstructions/" + merge_name + "/logs/used_for_georeferencing.json") as outfile:
-        merged_not_used_for_geo = not_used_for_geo1 + not_used_for_geo2
-        json.dump(merged_not_used_for_geo, outfile, indent=4)
+        merged_used_for_geo = used_for_geo1 + used_for_geo2
+        json.dump(merged_used_for_geo, outfile, indent=4)
 
     from gps import get_accuracy
     get_accuracy("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json",
