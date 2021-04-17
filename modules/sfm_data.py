@@ -237,14 +237,14 @@ def merge_reconstructions(a=None, b=None):
     get_accuracy("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json",
                     "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
                     "reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
-                    output="reconstructions/" + merge_name + "/localised_accuracy.json"
-                    "reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
+                    output="reconstructions/" + merge_name + "/localised_accuracy.json",
+                    georeferencing="reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
 
     get_accuracy("reconstructions/" + merge_name + "/intermediate/some_gps_data_from_images.json",
                 "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
                 "reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
                 output="reconstructions/" + merge_name + "/some_gps_localised_accuracy.json",
-                "reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
+                georeferencing="reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
 
     from gps import convert_to_kml
     convert_to_kml(georeference="reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json", \
@@ -324,82 +324,100 @@ def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, thres
 
     return bad_position
 
+
 def remove_images_from_reconstruction(sfm_data, images_to_remove):
     # If ran without any images to remove, it generates error on converting to '.bin' using openMVG;
-    # """
+    # "
     # Error while trying to deserialize a polymorphic pointer. Could not find type id 1
     # The input SfM_Data file "openMVG/output/sfm_data.json" cannot be read.
-    # """
+    # "
+    
     with open(sfm_data, "r") as infile:
         data = json.load(infile)
 
-    from copy import deepcopy
-    # Get mapping for all old values
-    old_mapping = {}
-    for view in data["views"]:
-        img_data = view["value"]["ptr_wrapper"]["data"] 
-        old_mapping[img_data["filename"]] = {"id_view": img_data["id_view"], "id_intrinsic": img_data["id_intrinsic"], "id_pose": img_data["id_pose"]}
-
-    old_mapping = deepcopy(old_mapping)
-    keys = {}
-    keys["view_keys"] = [view["key"] for view in data["views"]]
-    keys["intrinsics_keys"] = [intrinsic["key"] for intrinsic in data["intrinsics"]]
-    keys["extrinsics_keys"] = [extrinsic["key"] for extrinsic in data["extrinsics"]]
-    keys = deepcopy(keys)
-
-    # Get all filenames and view_id to remove, by bad altitude and unused in reconstruction.
-    views_to_remove = [val["id_view"] for key, val in old_mapping.items() \
-        if val["id_pose"] not in keys["extrinsics_keys"] \
-            or key in images_to_remove]
-
-    # Get all intrinsics to remove by views to remove.
-    # Extrinsics should remain untouched, except for changing key ordering later.
-    intrinsics_to_remove = [val["id_intrinsic"] for key, val in old_mapping.items() if val["id_view"] in views_to_remove]
-    # Check intrinsics isn't used by another view
-    intrinsics_to_remove = [id_intrinsic for id_intrinsic in intrinsics_to_remove if id_intrinsic not in \
-        [val["id_intrinsic"] for key, val in old_mapping.items() if val["id_view"] not in views_to_remove]]
+    # Get all valid pose ids, they should all be valid for now.
+    pose_ids = [pose["key"] for pose in data["extrinsics"]]
     
-    # Remove all unnecessary things by view keys to remove.
-    data["views"] = [view for view in data["views"] if view["key"] not in views_to_remove]
-    data["intrinsics"] = [intrinsic for intrinsic in data["intrinsics"] if intrinsic["key"] not in intrinsics_to_remove]
-    
-    # Set intrinsic keys according to position, store old mapping
+    # Get all valid views (not in image to remove and having a valid pose attached)
+    valid_views = [view for view in data["views"] \
+        if view["value"]["ptr_wrapper"]["data"]["filename"] not in images_to_remove \
+            and view["value"]["ptr_wrapper"]["data"]["id_pose"] in pose_ids]
+
+    # Get all intrinsics attached to valid views
+    valid_intrinsics = [intrinsic for intrinsic in data["intrinsics"] \
+        if intrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] for view in valid_views]]
+
+    # Get all extrinsics attached to valid views
+    valid_extrinsics = [extrinsic for extrinsic in data["extrinsics"] \
+        if extrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in valid_views]]
+
+    print(len(valid_views), len(valid_intrinsics), len(valid_extrinsics))
+    from copy import deepcopy as copy
+
+    # Replace key with position in array, save mapping.
+    old_to_new_extrinsics = {}
+    for extrinsic in valid_extrinsics:
+        old_key = copy(extrinsic["key"])
+        new_key = valid_extrinsics.index(extrinsic)
+        old_to_new_extrinsics[old_key] = new_key 
+        extrinsic["key"] = new_key
+
+    # Replace key with position in array, save mapping.
     old_to_new_intrinsics = {}
-    for intrinsic in data["intrinsics"]:
-        new_intrinsic_key = data["intrinsics"].index(intrinsic)
-        old_to_new_intrinsics[deepcopy(intrinsic["key"])] = new_intrinsic_key
-        intrinsic["key"] = new_intrinsic_key
-        intrinsic["value"]["polymorphic_id"] = 2147483649
-        intrinsic["value"]["polymorphic_name"] = "pinhole_radial_k3"
+    for intrinsic in valid_intrinsics:
+        old_key = copy(intrinsic["key"])
+        new_key = valid_intrinsics.index(intrinsic)
+        old_to_new_intrinsics[old_key] = new_key 
+        intrinsic["key"] = new_key
 
-
-    # Rewrite view and intrinsics ordering, keeping track of changed view_ids
-    changes_view_ids = {}
+    # Emulate cereal serialisation pointer.
     cereal_pntr = 2147483649
-    for view in data["views"]:
-        num = data["views"].index(view)
-        changes_view_ids[deepcopy(view["key"])] = num
-        view["key"] = num
-        # Saves need for counter
+
+    # For each view
+    old_to_new_viewids = {}
+    for view in valid_views:
+        old_key = copy(view["key"])
+        new_key = valid_views.index(view)
+        old_to_new_viewids[old_key] = new_key
+        view["key"] = new_key
+        view["value"]["polymorphic_id"] = 1073741824
         view["value"]["ptr_wrapper"]["id"] = cereal_pntr
-        view["value"]["ptr_wrapper"]["data"]["id_view"] = num
-        view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] = old_to_new_intrinsics[view["value"]["ptr_wrapper"]["data"]["id_intrinsic"]]
+        view["value"]["ptr_wrapper"]["data"]["id_view"] = new_key
+        view["value"]["ptr_wrapper"]["data"]["id_pose"] = \
+            old_to_new_extrinsics[view["value"]["ptr_wrapper"]["data"]["id_pose"]]
+        view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] = \
+            old_to_new_intrinsics[view["value"]["ptr_wrapper"]["data"]["id_intrinsic"]]
         cereal_pntr += 1
 
-    for intrinsic in data["intrinsics"]:
+    for intrinsic in valid_intrinsics:
+        intrinsic["value"]["polymorphic_id"] = 2147483649
+        intrinsic["value"]["polymorphic_name"] = "pinhole_radial_k3"
         intrinsic["value"]["ptr_wrapper"]["id"] = cereal_pntr
         cereal_pntr += 1
 
     # Removing structures referencing those removed views and updating old view mapping.
+    valid_view_ids = []
     for structure in data["structure"]:
         for observation in structure["value"]["observations"]:
-            if observation["key"] in views_to_remove:
+            exec("")
+            if observation["key"] not in old_to_new_viewids.keys():
                 structure["value"]["observations"].remove(observation)
             else:
-                observation["key"] = changes_view_ids[observation["key"]]
+                observation["key"] = old_to_new_viewids[observation["key"]]
 
     # find a point has fewer than 2 views and remove them
     data["structure"][:] = [data["structure"][i] for i in range(0,len(data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
 
+    new_data = {
+        "sfm_data_version": "0.3",
+        "root_path": data["root_path"],
+        "views": valid_views,
+        "intrinsics": valid_intrinsics,
+        "extrinsics": valid_extrinsics,
+        "structure": data["structure"],
+        "control_points": []
+    }
+
+
     with open(sfm_data, "w+") as outfile:
-        json.dump(data, outfile, indent=4)
+        json.dump(new_data, outfile, indent=4)

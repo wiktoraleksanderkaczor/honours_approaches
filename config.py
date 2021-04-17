@@ -2,8 +2,8 @@ from geopy.geocoders import Nominatim
 
 
 # The topic for the reconstruction.
-TOPIC = "Stonehenge"
-GEO_TOPIC = "Stonehenge"
+TOPIC = "St Giles Cathedral Outside"
+GEO_TOPIC = "St Giles Cathedral"
 
 # Number of metres around the GPS location of the subject to be considered valid GPS.
 METRES_RADIUS_THRESHOLD = 750

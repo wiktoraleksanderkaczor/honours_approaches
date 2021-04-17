@@ -374,7 +374,8 @@ def handle_choice(choice):
         merge_reconstructions()
 
     elif choice == 14:
-        handle_choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 12])
+        for opt in [1, 2, 3, 4, 5, 6, 7, 8, 9, 12]:
+            handle_choice(opt)
 
     elif choice == -1:
         exit(0)

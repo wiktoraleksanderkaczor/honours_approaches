@@ -2,7 +2,7 @@
 opencv-python
 youtube-dl
 imagehash
-rapidjson
+python-rapidjson
 simplekml
 flickrapi
 exifread

@@ -10,8 +10,8 @@ import os
 
 
 def links_from_flickr(topic):
-    KEY = '88a8660edd2e770b1b00e878af174879'
-    SECRET = 'f3063c276e3ad859'
+    KEY = '2a6eeafdc1f3e6f648d5ae1e17793666'
+    SECRET = '8c89b7612bcb2675'
 
     SIZES = ["url_o", "url_k", "url_h", "url_l",
              "url_c"]  # in order of preference
@@ -91,6 +91,7 @@ def should_continue(links, threshold=500):
     if should_continue.iter_no_download >= threshold:
         links.close()
 
+    return True
 
 def download(links, folder):
     print("DOWNLOADING IMAGES FROM FLICKR:")
@@ -103,7 +104,7 @@ def download(links, folder):
     should_continue.iter_no_download = 0
     should_continue.num_images = len(glob("intermediate/images/*"))
     Parallel(n_jobs=cpu_count(), prefer="threads")(
-        delayed(download_task)(link, tracker, folder) for link in tqdm(links) if should_continue(links, threshold=100)
+        delayed(download_task)(link, tracker, folder) for link in tqdm(links) if should_continue(links, threshold=300)
     )
     print("Downloaded {} images".format(len(glob("intermediate/images/*"))))
 
