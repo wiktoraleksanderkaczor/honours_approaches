@@ -168,21 +168,29 @@ def handle_choice(choice):
             os.system(cmd)
 
     elif choice == 8:
-        from sfm_data import get_bad_altitude_before_georeferencing, remove_images_from_reconstruction
+        from sfm_data import get_bad_altitude_before_georeferencing, remove_images_from_reconstruction_soft
+        # remove_images_from_reconstruction
+        
+        # Checking bad altitudes by using relative poses from the reconstruction to relative poses from GPS. 
         bad_alt = get_bad_altitude_before_georeferencing(
             "intermediate/gps_data_from_images.json", \
             "openMVG/output/sfm_data.json",)
-        remove_images_from_reconstruction("openMVG/output/sfm_data.json", bad_alt)
+        
+        # This requires altering the matches files, otherwise, errors on the descriptor vector size.  
+        # unused_images = remove_images_from_reconstruction("openMVG/output/sfm_data.json", bad_alt)
+        
+        # Remove the poses associated with images highlighted as having a bad altitude tag.
+        remove_images_from_reconstruction_soft("openMVG/output/sfm_data.json", bad_alt)
         commands = [
             """
             openMVG_main_ConvertSfM_DataFormat \
 				-i openMVG/output/sfm_data.json \
-				-o openMVG/output/sfm_data.bin
+				-o openMVG/output/sfm_data_modified.bin
             """,
 
             """
             openMVG_main_geodesy_registration_to_gps_position \
-				-i openMVG/output/sfm_data.bin \
+				-i openMVG/output/sfm_data_modified.bin \
 				-o openMVG/output/sfm_data_geo.bin \
                 -m 0
             """,
@@ -202,26 +210,9 @@ def handle_choice(choice):
         for cmd in commands:
             os.system(cmd)
 
+
     elif choice == 9:
         commands = [
-        """
-        openMVG_main_ListMatchingPairs \
-            -i openMVG/output/sfm_data_geo.bin \
-            -o openMVG/pairlist.txt
-        """,
-
-        """
-        openMVG_main_ComputeMatches \
-            -i openMVG/output/sfm_data_geo.json \
-            -o openMVG/data_known/ \
-            -m 1 \
-            -f 1 \
-            -l openMVG/pairlist.txt
-        """,
-
-        # The above two commands are because openMVG doesn't like removing images 
-        # from a reconstruction and not updating match files.
-        
         """
 		openMVG_main_SfM_Localization \
 			-i openMVG/output/sfm_data_geo.bin \

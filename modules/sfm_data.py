@@ -268,7 +268,7 @@ def merge_reconstructions(a=None, b=None):
 
     json.dump(acc_changes, open("reconstructions/" + merge_name + "/accuracy_changes_from_merge.json", "w+"), indent=4)
 
-def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=15):
+def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=10):
     with open(sfm_data, "r") as infile:
         data = json.load(infile)
     with open(gps_data_from_images, "r") as infile:
@@ -421,3 +421,32 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
 
     with open(sfm_data, "w+") as outfile:
         json.dump(new_data, outfile, indent=4)
+
+
+# https://gitlab.com/educelab/sfm-utils/-/blob/develop/sfm_utils/openmvg.py
+def remove_images_from_reconstruction_soft(sfm_data, images_to_remove):
+    # If ran without any images to remove, it generates error on converting to '.bin' using openMVG;
+    # "
+    # Error while trying to deserialize a polymorphic pointer. Could not find type id 1
+    # The input SfM_Data file "openMVG/output/sfm_data.json" cannot be read.
+    # "
+    
+    with open(sfm_data, "r") as infile:
+        data = json.load(infile)
+
+    # Get all valid views (not in image to remove) and remove poses for images to remove.
+    invalid_pose_ids = [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in data["views"] if view["value"]["ptr_wrapper"]["data"]["filename"] in images_to_remove]
+    data["extrinsics"] = [pose for pose in data["extrinsics"] if pose["key"] not in invalid_pose_ids]
+    valid_view_ids = [view["value"]["ptr_wrapper"]["data"]["id_view"] for view in data["views"]]
+
+    # Removing structures referencing those removed views.
+    for structure in data["structure"]:
+        for observation in structure["value"]["observations"]:
+            if observation["key"] not in valid_view_ids:
+                structure["value"]["observations"].remove(observation)
+
+    # find a point has fewer than 2 views and remove them
+    data["structure"][:] = [data["structure"][i] for i in range(0,len(data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
+
+    with open(sfm_data, "w+") as outfile:
+        json.dump(data, outfile, indent=4)
