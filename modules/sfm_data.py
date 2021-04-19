@@ -325,6 +325,7 @@ def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, thres
     return bad_position
 
 
+# https://gitlab.com/educelab/sfm-utils/-/blob/develop/sfm_utils/openmvg.py
 def remove_images_from_reconstruction(sfm_data, images_to_remove):
     # If ran without any images to remove, it generates error on converting to '.bin' using openMVG;
     # "
@@ -417,7 +418,6 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
         "structure": data["structure"],
         "control_points": []
     }
-
 
     with open(sfm_data, "w+") as outfile:
         json.dump(new_data, outfile, indent=4)

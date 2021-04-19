@@ -1,3 +1,0 @@
-- Generating KML with only localized positions.
-
-- OSM Points-Of-Interest for appending to TOPIC query as a way to get more images, maybe top 5 only.

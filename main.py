@@ -205,6 +205,24 @@ def handle_choice(choice):
     elif choice == 9:
         commands = [
         """
+        openMVG_main_ListMatchingPairs \
+            -i openMVG/output/sfm_data_geo.bin \
+            -o openMVG/pairlist.txt
+        """,
+
+        """
+        openMVG_main_ComputeMatches \
+            -i openMVG/output/sfm_data_geo.json \
+            -o openMVG/data_known/ \
+            -m 1 \
+            -f 1 \
+            -l openMVG/pairlist.txt
+        """,
+
+        # The above two commands are because openMVG doesn't like removing images 
+        # from a reconstruction and not updating match files.
+        
+        """
 		openMVG_main_SfM_Localization \
 			-i openMVG/output/sfm_data_geo.bin \
 			--match_dir openMVG/data \
