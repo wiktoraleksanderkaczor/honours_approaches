@@ -8,6 +8,8 @@ import requests
 import json
 import os
 
+# https://joequery.me/code/flickr-api-image-search-python/
+
 
 def links_from_flickr(topic):
     KEY = '2a6eeafdc1f3e6f648d5ae1e17793666'
@@ -59,6 +61,8 @@ def links_from_flickr(topic):
     except Exception as e:
         print(e)
 
+
+# https://www.tutorialspoint.com/downloading-files-from-web-using-python
 def download_task(link, tracker, folder):
     link_hash = str(md5(link.encode("utf-8")).hexdigest())
     ext = link.split(".")[-1].lower()
@@ -92,6 +96,7 @@ def should_continue(links, threshold=500):
         links.close()
 
     return True
+
 
 def download(links, folder):
     print("DOWNLOADING IMAGES FROM FLICKR:")

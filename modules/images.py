@@ -11,6 +11,8 @@ import os
 from fileio import filename, move
 
 
+# https://www.pyimagesearch.com/2017/11/27/image-hashing-opencv-python/
+# https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
 def check_task(image, hashes, RESOLUTION_THRESHOLD, BLURRINESS_THRESHOLD, under_res, too_blurry, hashing=True):
     if image not in hashes:
         img = cv2.imread(image, cv2.IMREAD_GRAYSCALE)

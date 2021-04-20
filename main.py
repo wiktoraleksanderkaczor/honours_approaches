@@ -181,6 +181,7 @@ def handle_choice(choice):
         
         # Remove the poses associated with images highlighted as having a bad altitude tag.
         remove_images_from_reconstruction_soft("openMVG/output/sfm_data.json", bad_alt)
+        print("Images with bad altitude:", bad_alt)
         commands = [
             """
             openMVG_main_ConvertSfM_DataFormat \
@@ -259,6 +260,7 @@ def handle_choice(choice):
         from fileio import copy
 
         # Process video links, if any.
+        # https://ostechnix.com/youtube-dl-tutorial-with-examples-for-beginners/
         if VIDEO_LINKS:
             for num, link in enumerate(VIDEO_LINKS):
                 cmd = """youtube-dl -o "./video/downloads/vid{}.%(ext)s" -f best '{}'""".format(num, link)

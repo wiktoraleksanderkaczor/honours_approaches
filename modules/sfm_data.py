@@ -6,6 +6,7 @@ from tqdm import tqdm
 from glob import glob
 import os
 
+
 def merge_sfm_data(sfm_data_one, sfm_data_two, output):
     print("READING THE TWO FILES FOR MERGING")
     with open(sfm_data_one, "r") as infile:
@@ -70,7 +71,7 @@ def merge_sfm_data(sfm_data_one, sfm_data_two, output):
 def merge_reconstructions(a=None, b=None):
     reconstructions = glob("reconstructions/*")
     options = list(combinations(reconstructions, 2))
-    
+
     if not a or not b:
         option = None
         if options:
@@ -82,64 +83,77 @@ def merge_reconstructions(a=None, b=None):
                     option = int(input())
                 except:
                     option = None
-        
+
         if option == -1:
             return
 
         a, b = options[option][0], options[option][1]
 
     # Conveniences
-    merge_name = filename(a)+ "~" +filename(b)
+    merge_name = filename(a) + "~" + filename(b)
     merge_name = merge_name.replace(" ", "_")
 
     # Create folders for merging.
     create_folder("reconstructions/" + merge_name)
     create_folder("reconstructions/" + merge_name + "/openMVG/")
     create_folder("reconstructions/" + merge_name + "/openMVG/" + "data/")
-    create_folder("reconstructions/" + merge_name + "/openMVG/" + "localization_images/")
-    create_folder("reconstructions/" + merge_name + "/openMVG/" + "some_gps_localization/")
+    create_folder("reconstructions/" + merge_name +
+                  "/openMVG/" + "localization_images/")
+    create_folder("reconstructions/" + merge_name +
+                  "/openMVG/" + "some_gps_localization/")
     create_folder("reconstructions/" + merge_name + "/openMVG/" + "output/")
     create_folder("reconstructions/" + merge_name + "/intermediate/")
+    create_folder("reconstructions/" + merge_name + "/logs/")
 
     # Copy features and descriptors for one part of the pair
-    features, descriptors = glob(a+"/openMVG/data/*.feat"), glob(a+"/openMVG/data/*.desc")
+    features, descriptors = glob(
+        a+"/openMVG/data/*.feat"), glob(a+"/openMVG/data/*.desc")
 
     for feature, descriptor in zip(features, descriptors):
         filename1 = filename(feature)
         filename2 = filename(descriptor)
-        copy(feature, "reconstructions/" + merge_name + "/openMVG/data/" + filename1)
-        copy(descriptor, "reconstructions/" + merge_name + "/openMVG/data/" + filename2)
+        copy(feature, "reconstructions/" +
+             merge_name + "/openMVG/data/" + filename1)
+        copy(descriptor, "reconstructions/" +
+             merge_name + "/openMVG/data/" + filename2)
 
-    
     # Copy features and descriptors for the second part of the pair
-    features, descriptors = glob(b+"/openMVG/data/*.feat"), glob(b+"/openMVG/data/*.desc")
+    features, descriptors = glob(
+        b+"/openMVG/data/*.feat"), glob(b+"/openMVG/data/*.desc")
 
     for feature, descriptor in zip(features, descriptors):
         filename1 = filename(feature)
         filename2 = filename(descriptor)
-        copy(feature, "reconstructions/" + merge_name + "/openMVG/data/" + filename1)
-        copy(descriptor, "reconstructions/" + merge_name + "/openMVG/data/" + filename2)
+        copy(feature, "reconstructions/" +
+             merge_name + "/openMVG/data/" + filename1)
+        copy(descriptor, "reconstructions/" +
+             merge_name + "/openMVG/data/" + filename2)
 
-    copy(a+"/openMVG/data/image_describer.json", "reconstructions/" + merge_name + "/openMVG/data/image_describer.json")
+    copy(a+"/openMVG/data/image_describer.json", "reconstructions/" +
+         merge_name + "/openMVG/data/image_describer.json")
 
     # Copy over the localisation images from both reconstructions.
     localisation_one = glob(a+"/openMVG/localization_images/*")
     localisation_two = glob(b+"/openMVG/localization_images/*")
 
     for img in localisation_one:
-        copy(img, "reconstructions/" + merge_name + "/openMVG/localization_images/" + filename(img))
+        copy(img, "reconstructions/" + merge_name +
+             "/openMVG/localization_images/" + filename(img))
 
     for img in localisation_two:
-        copy(img, "reconstructions/" + merge_name + "/openMVG/localization_images/" + filename(img))
+        copy(img, "reconstructions/" + merge_name +
+             "/openMVG/localization_images/" + filename(img))
 
     some_gps_one = glob(a+"/openMVG/some_gps_localization/*")
     some_gps_two = glob(b+"/openMVG/some_gps_localization/*")
 
-    for img in localisation_one:
-        copy(img, "reconstructions/" + merge_name + "/openMVG/some_gps_localization/" + filename(img))
+    for img in some_gps_one:
+        copy(img, "reconstructions/" + merge_name +
+             "/openMVG/some_gps_localization/" + filename(img))
 
-    for img in localisation_two:
-        copy(img, "reconstructions/" + merge_name + "/openMVG/some_gps_localization/" + filename(img))
+    for img in some_gps_two:
+        copy(img, "reconstructions/" + merge_name +
+             "/openMVG/some_gps_localization/" + filename(img))
 
     with open(a+"/intermediate/gps_data_from_images.json", "r") as infile:
         gps1 = json.load(infile)
@@ -152,7 +166,7 @@ def merge_reconstructions(a=None, b=None):
         merged_gps[key] = val
     for key, val in gps2.items():
         merged_gps[key] = val
-    
+
     with open("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json", "w+") as outfile:
         json.dump(merged_gps, outfile, indent=4)
 
@@ -173,25 +187,25 @@ def merge_reconstructions(a=None, b=None):
 
     # Merge the actual "sfm_data".
     from sfm_data import merge_sfm_data
-    merge_sfm_data(a+"/openMVG/output/sfm_data_geo.json", \
-        b+"/openMVG/output/sfm_data_geo.json", \
-        "reconstructions/" + merge_name + "/openMVG/output/sfm_data_geo.json")
+    merge_sfm_data(a+"/openMVG/output/sfm_data_geo.json",
+                   b+"/openMVG/output/sfm_data_geo.json",
+                   "reconstructions/" + merge_name + "/openMVG/output/sfm_data_geo.json")
 
     # Localise images in reconstruction and make relevant files.
     commands = [
-    """
+        """
         openMVG_main_ConvertSfM_DataFormat \
             -i reconstructions/{}/openMVG/output/sfm_data_geo.json \
             -o reconstructions/{}/openMVG/output/sfm_data_geo.bin \
     """.format(merge_name, merge_name),
 
-    """
+        """
         openMVG_main_ConvertSfM_DataFormat \
             -i reconstructions/{}/openMVG/output/sfm_data_geo.bin \
             -o reconstructions/{}/openMVG/output/sfm_data_geo.ply \
     """.format(merge_name, merge_name),
 
-    """
+        """
     openMVG_main_SfM_Localization \
         -i reconstructions/{}/openMVG/output/sfm_data_geo.bin \
         --match_dir reconstructions/{}/openMVG/data \
@@ -199,8 +213,8 @@ def merge_reconstructions(a=None, b=None):
         --query_image_dir reconstructions/{}/openMVG/localization_images \
         --numThreads {}
     """.format(merge_name, merge_name, merge_name, merge_name, cpu_count()),
-    
-    """
+
+        """
     openMVG_main_SfM_Localization \
         -i reconstructions/{}/openMVG/output/sfm_data_geo.bin \
         --match_dir reconstructions/{}/openMVG/data \
@@ -214,59 +228,69 @@ def merge_reconstructions(a=None, b=None):
 
     from gps import export_gps_to_file
     export_gps_to_file(
-        georeference="reconstructions/" + merge_name + "/openMVG/output/sfm_data_geo.json", \
+        georeference="reconstructions/" + merge_name +
+        "/openMVG/output/sfm_data_geo.json",
         output="reconstructions/" + merge_name + "/openMVG/")
     export_gps_to_file(
-        georeference="reconstructions/" + merge_name + "/openMVG/localization_output/sfm_data_expanded.json", \
+        georeference="reconstructions/" + merge_name +
+        "/openMVG/localization_output/sfm_data_expanded.json",
         output="reconstructions/" + merge_name + "/openMVG/")
     export_gps_to_file(
-        georeference="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/sfm_data_expanded.json", \
-            output="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/")
+        georeference="reconstructions/" + merge_name +
+        "/openMVG/some_gps_localization_output/sfm_data_expanded.json",
+        output="reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/")
 
-    with open(a + "/logs/used_for_georeferencing.json", "r") as infile:
+    with open(a + "/logs/images_for_georeferencing.json", "r") as infile:
         used_for_geo1 = json.load(infile)
 
-    with open(b + "/logs/used_for_georeferencing.json", "r") as infile:
+    with open(b + "/logs/images_for_georeferencing.json", "r") as infile:
         used_for_geo2 = json.load(infile)
 
-    with open("reconstructions/" + merge_name + "/logs/used_for_georeferencing.json") as outfile:
+    with open("reconstructions/" + merge_name + "/logs/images_for_georeferencing.json", "w+") as outfile:
         merged_used_for_geo = used_for_geo1 + used_for_geo2
         json.dump(merged_used_for_geo, outfile, indent=4)
 
     from gps import get_accuracy
     get_accuracy("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json",
-                    "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
-                    "reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
-                    output="reconstructions/" + merge_name + "/localised_accuracy.json",
-                    georeferencing="reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
+                 "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
+                 "reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
+                 output="reconstructions/" + merge_name + "/localised_accuracy.json",
+                 georeferencing="reconstructions/" + merge_name + "/logs/images_for_georeferencing.json")
 
     get_accuracy("reconstructions/" + merge_name + "/intermediate/some_gps_data_from_images.json",
-                "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
-                "reconstructions/" + merge_name + "/openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
-                output="reconstructions/" + merge_name + "/some_gps_localised_accuracy.json",
-                georeferencing="reconstructions/" + merge_name + "/logs/used_for_georeferencing.json")
+                 "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
+                 "reconstructions/" + merge_name +
+                 "/openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
+                 output="reconstructions/" + merge_name + "/some_gps_localised_accuracy.json",
+                 georeferencing="reconstructions/" + merge_name + "/logs/images_for_georeferencing.json")
 
     from gps import convert_to_kml
-    convert_to_kml(georeference="reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json", \
-        output="reconstructions/" + merge_name + "/openMVG/positions.kml")
+    convert_to_kml(georeference="reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
+                   output="reconstructions/" + merge_name + "/openMVG/positions.kml")
 
     # Compare accuracy of localisation between reconstructions.
     acc1 = a + "/openMVG/localised_accuracy.json"
     acc2 = b + "/openMVG/localised_accuracy.json"
     acc1 = json.load(open(acc1, "r"))
     acc2 = json.load(open(acc2, "r"))
-    new_acc = json.load(open("reconstructions/" + merge_name + "/localised_accuracy.json", "r"))
+    new_acc = json.load(
+        open("reconstructions/" + merge_name + "/localised_accuracy.json", "r"))
     acc_changes = {}
     for img in new_acc.keys():
         difference_accuracy = None
-        if img in acc1.keys():
-            difference_accuracy = acc1[img]["metres_distance_from_actual"] - new_acc[img]["metres_distance_from_actual"]
-        if img in acc2.keys():
-            difference_accuracy = acc2[img]["metres_distance_from_actual"] - new_acc[img]["metres_distance_from_actual"]
-        if difference_accuracy:
-            acc_changes[img] = difference_accuracy
+        if img != "sum_error":
+            if img in acc1.keys():
+                difference_accuracy = acc1[img]["metres_distance_from_actual"] - \
+                    new_acc[img]["metres_distance_from_actual"]
+            if img in acc2.keys():
+                difference_accuracy = acc2[img]["metres_distance_from_actual"] - \
+                    new_acc[img]["metres_distance_from_actual"]
+            if difference_accuracy:
+                acc_changes[img] = difference_accuracy
 
-    json.dump(acc_changes, open("reconstructions/" + merge_name + "/accuracy_changes_from_merge.json", "w+"), indent=4)
+    json.dump(acc_changes, open("reconstructions/" + merge_name +
+              "/accuracy_changes_from_merge.json", "w+"), indent=4)
+
 
 def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=10):
     with open(sfm_data, "r") as infile:
@@ -275,21 +299,23 @@ def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, thres
         gps_data = json.load(infile)
 
     # Check if distances between gps data and position in reconstruction are directly proportional, if so, likely to be correct.
-    # Else, remove from reconstruction's "sfm_data"... and the reconstruction files.  
+    # Else, remove from reconstruction's "sfm_data"... and the reconstruction files.
     # Add to log of "removed because wrong altitude"
 
     # Get the pose for each image, if it exists.
     pose_for_image = {}
     for view in data["views"]:
-        img_data = view["value"]["ptr_wrapper"]["data"] 
+        img_data = view["value"]["ptr_wrapper"]["data"]
         if img_data["filename"] in gps_data.keys():
             pose_id = img_data["id_pose"]
             for extrinsic in data["extrinsics"]:
                 if extrinsic["key"] == pose_id:
-                    pose_for_image[img_data["filename"]] = extrinsic["value"]["center"]
+                    pose_for_image[img_data["filename"]
+                                   ] = extrinsic["value"]["center"]
 
     # If image has pose in reconstruction.
-    gps_data = {img: data for img, data in gps_data.items() if img in pose_for_image.keys()}
+    gps_data = {img: data for img,
+                data in gps_data.items() if img in pose_for_image.keys()}
 
     # Euclidean distance
     # https://stackoverflow.com/questions/1401712/how-can-the-euclidean-distance-be-calculated-with-numpy
@@ -312,7 +338,7 @@ def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, thres
                 relative_distance = distance.euclidean(relative1, relative2)
                 gps_sum += gps_distance
                 relative_sum += relative_distance
-        
+
         relative_sum = relative_sum / num_images
         gps_sum = gps_sum / num_images
         proportion = gps_sum * relative_sum
@@ -327,30 +353,25 @@ def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, thres
 
 # https://gitlab.com/educelab/sfm-utils/-/blob/develop/sfm_utils/openmvg.py
 def remove_images_from_reconstruction(sfm_data, images_to_remove):
-    # If ran without any images to remove, it generates error on converting to '.bin' using openMVG;
-    # "
-    # Error while trying to deserialize a polymorphic pointer. Could not find type id 1
-    # The input SfM_Data file "openMVG/output/sfm_data.json" cannot be read.
-    # "
-    
+    # Throws error on localisation.
     with open(sfm_data, "r") as infile:
         data = json.load(infile)
 
     # Get all valid pose ids, they should all be valid for now.
     pose_ids = [pose["key"] for pose in data["extrinsics"]]
-    
+
     # Get all valid views (not in image to remove and having a valid pose attached)
-    valid_views = [view for view in data["views"] \
-        if view["value"]["ptr_wrapper"]["data"]["filename"] not in images_to_remove \
-            and view["value"]["ptr_wrapper"]["data"]["id_pose"] in pose_ids]
+    valid_views = [view for view in data["views"]
+                   if view["value"]["ptr_wrapper"]["data"]["filename"] not in images_to_remove
+                   and view["value"]["ptr_wrapper"]["data"]["id_pose"] in pose_ids]
 
     # Get all intrinsics attached to valid views
-    valid_intrinsics = [intrinsic for intrinsic in data["intrinsics"] \
-        if intrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] for view in valid_views]]
+    valid_intrinsics = [intrinsic for intrinsic in data["intrinsics"]
+                        if intrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] for view in valid_views]]
 
     # Get all extrinsics attached to valid views
-    valid_extrinsics = [extrinsic for extrinsic in data["extrinsics"] \
-        if extrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in valid_views]]
+    valid_extrinsics = [extrinsic for extrinsic in data["extrinsics"]
+                        if extrinsic["key"] in [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in valid_views]]
 
     print(len(valid_views), len(valid_intrinsics), len(valid_extrinsics))
     from copy import deepcopy as copy
@@ -360,7 +381,7 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
     for extrinsic in valid_extrinsics:
         old_key = copy(extrinsic["key"])
         new_key = valid_extrinsics.index(extrinsic)
-        old_to_new_extrinsics[old_key] = new_key 
+        old_to_new_extrinsics[old_key] = new_key
         extrinsic["key"] = new_key
 
     # Replace key with position in array, save mapping.
@@ -368,7 +389,7 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
     for intrinsic in valid_intrinsics:
         old_key = copy(intrinsic["key"])
         new_key = valid_intrinsics.index(intrinsic)
-        old_to_new_intrinsics[old_key] = new_key 
+        old_to_new_intrinsics[old_key] = new_key
         intrinsic["key"] = new_key
 
     # Emulate cereal serialisation pointer.
@@ -385,9 +406,11 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
         view["value"]["ptr_wrapper"]["id"] = cereal_pntr
         view["value"]["ptr_wrapper"]["data"]["id_view"] = new_key
         view["value"]["ptr_wrapper"]["data"]["id_pose"] = \
-            old_to_new_extrinsics[view["value"]["ptr_wrapper"]["data"]["id_pose"]]
+            old_to_new_extrinsics[view["value"]
+                                  ["ptr_wrapper"]["data"]["id_pose"]]
         view["value"]["ptr_wrapper"]["data"]["id_intrinsic"] = \
-            old_to_new_intrinsics[view["value"]["ptr_wrapper"]["data"]["id_intrinsic"]]
+            old_to_new_intrinsics[view["value"]
+                                  ["ptr_wrapper"]["data"]["id_intrinsic"]]
         cereal_pntr += 1
 
     for intrinsic in valid_intrinsics:
@@ -407,7 +430,8 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
                 observation["key"] = old_to_new_viewids[observation["key"]]
 
     # find a point has fewer than 2 views and remove them
-    data["structure"][:] = [data["structure"][i] for i in range(0,len(data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
+    data["structure"][:] = [data["structure"][i] for i in range(0, len(
+        data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
 
     new_data = {
         "sfm_data_version": "0.3",
@@ -425,19 +449,16 @@ def remove_images_from_reconstruction(sfm_data, images_to_remove):
 
 # https://gitlab.com/educelab/sfm-utils/-/blob/develop/sfm_utils/openmvg.py
 def remove_images_from_reconstruction_soft(sfm_data, images_to_remove):
-    # If ran without any images to remove, it generates error on converting to '.bin' using openMVG;
-    # "
-    # Error while trying to deserialize a polymorphic pointer. Could not find type id 1
-    # The input SfM_Data file "openMVG/output/sfm_data.json" cannot be read.
-    # "
-    
     with open(sfm_data, "r") as infile:
         data = json.load(infile)
 
     # Get all valid views (not in image to remove) and remove poses for images to remove.
-    invalid_pose_ids = [view["value"]["ptr_wrapper"]["data"]["id_pose"] for view in data["views"] if view["value"]["ptr_wrapper"]["data"]["filename"] in images_to_remove]
-    data["extrinsics"] = [pose for pose in data["extrinsics"] if pose["key"] not in invalid_pose_ids]
-    valid_view_ids = [view["value"]["ptr_wrapper"]["data"]["id_view"] for view in data["views"]]
+    invalid_pose_ids = [view["value"]["ptr_wrapper"]["data"]["id_pose"]
+                        for view in data["views"] if view["value"]["ptr_wrapper"]["data"]["filename"] in images_to_remove]
+    data["extrinsics"] = [pose for pose in data["extrinsics"]
+                          if pose["key"] not in invalid_pose_ids]
+    valid_view_ids = [view["value"]["ptr_wrapper"]
+                      ["data"]["id_view"] for view in data["views"]]
 
     # Removing structures referencing those removed views.
     for structure in data["structure"]:
@@ -446,7 +467,8 @@ def remove_images_from_reconstruction_soft(sfm_data, images_to_remove):
                 structure["value"]["observations"].remove(observation)
 
     # find a point has fewer than 2 views and remove them
-    data["structure"][:] = [data["structure"][i] for i in range(0,len(data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
+    data["structure"][:] = [data["structure"][i] for i in range(0, len(
+        data["structure"])) if len(data["structure"][i]["value"]["observations"]) >= 2]
 
     with open(sfm_data, "w+") as outfile:
         json.dump(data, outfile, indent=4)

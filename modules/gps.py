@@ -1,3 +1,4 @@
+import write_gps
 from multiprocessing import cpu_count
 from fileio import create_folder, filename, copy
 from joblib import Parallel, delayed
@@ -42,6 +43,7 @@ def get_exif_data(image_file):
     return exif_tags
 
 
+# https://gist.github.com/snakeye/fdc372dbf11370fe29eb
 def get_exif_location(exif_data):
     """
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
@@ -81,7 +83,7 @@ def get_exif_location(exif_data):
     return lat, lon, altitude, bearing
 
 
-# Distance between two points
+# https://stackoverflow.com/a/38187562
 def measure(lat1, lon1, lat2, lon2):  # generally used geo measurement function
     R = 6378.137  # Radius of earth in KM
     dLat = lat2 * pi / 180 - lat1 * pi / 180
@@ -148,6 +150,7 @@ def get_gps(data_dir, some_gps, good_gps, bad_gps, location, METRES_THR=500):
         json.dump(some_gps_to_save, outfile, indent=4)
 
 
+# https://pypi.org/project/gpsphoto/
 def remove_exif(some_gps, cleared_gps):
     images = glob(some_gps+"/*")
     # https://stackoverflow.com/questions/19786301/python-remove-exif-info-from-images
@@ -170,12 +173,13 @@ def select_and_copy_GPS_images(data_dir, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_I
     if os.path.isfile("logs/images_for_georeferencing.json"):
         with open("logs/images_for_georeferencing.json", "r") as infile:
             gps_images = json.load(infile)
-    
-    # Sort possible GPS images by size (maximise ability to be included) and set number to be 
-    # added to minus what is already there.
-    possible_gps = sorted(glob(good_gps+"*.jpg"), key=os.path.getsize, reverse=True)
 
-    # Add only enough images to fill the quota, not removing those there. 
+    # Sort possible GPS images by size (maximise ability to be included) and set number to be
+    # added to minus what is already there.
+    possible_gps = sorted(glob(good_gps+"*.jpg"),
+                          key=os.path.getsize, reverse=True)
+
+    # Add only enough images to fill the quota, not removing those there.
     # If there aren't enough, all will be used.
     for image in possible_gps:
         if len(gps_images) >= NUM_GPS_IMAGES:
@@ -192,7 +196,8 @@ def select_and_copy_GPS_images(data_dir, good_gps, NUM_GPS_IMAGES, NUM_LARGEST_I
         copy(image, openMVG_images + filename(image))
 
     # Sort by size and move the amount needed.
-    sorted_by_size = sorted(glob(data_dir+"*.jpg"), key=os.path.getsize, reverse=True)
+    sorted_by_size = sorted(glob(data_dir+"*.jpg"),
+                            key=os.path.getsize, reverse=True)
 
     images_used = []
     if os.path.isfile("logs/images_used.json"):
@@ -218,16 +223,19 @@ def convert_to_kml(georeference, output="openMVG/positions.kml", gps_data=None):
 
     if gps_data:
         gps_data_from_images = json.load(open(gps_data, "r"))
-        data = {key: value for key, value in data.items() if key in gps_data_from_images.keys()}
+        data = {key: value for key, value in data.items(
+        ) if key in gps_data_from_images.keys()}
 
     for key, values in data.items():
-        #https://simplekml.readthedocs.io/en/latest/geometries.html
-        #https://simplekml.readthedocs.io/en/latest/constants.html#simplekml.AltitudeMode
-        kml.newpoint(name=key, coords=[(values["lon"], values["lat"], values["alt"])])
+        # https://simplekml.readthedocs.io/en/latest/geometries.html
+        # https://simplekml.readthedocs.io/en/latest/constants.html#simplekml.AltitudeMode
+        kml.newpoint(name=key, coords=[
+                     (values["lon"], values["lat"], values["alt"])])
 
     kml.save(output)
 
 
+# https://github.com/kvenkman/ecef2lla
 def ecef2lla(x, y, z):
     # x, y and z are scalars or vectors in meters
     x = np.array([x]).reshape(np.array([x]).shape[-1], 1)
@@ -269,12 +277,12 @@ def export_gps_to_file(georeference, output="openMVG/"):
         data = json.load(f)
 
     key_to_fname = {
-        view["value"]["ptr_wrapper"]["data"]["id_pose"]: view["value"]["ptr_wrapper"]["data"]["filename"] \
+        view["value"]["ptr_wrapper"]["data"]["id_pose"]: view["value"]["ptr_wrapper"]["data"]["filename"]
         for view in data["views"]}
-    
-    fname_to_gps = {key_to_fname[ext["key"]]: ext["value"]["center"] \
-        for ext in data["extrinsics"]}
-    
+
+    fname_to_gps = {key_to_fname[ext["key"]]: ext["value"]["center"]
+                    for ext in data["extrinsics"]}
+
     recovered = {}
     for key in fname_to_gps.keys():
         x, y, z = fname_to_gps[key][0], fname_to_gps[key][1], fname_to_gps[key][2]
@@ -286,7 +294,10 @@ def export_gps_to_file(georeference, output="openMVG/"):
     with open(output + no_ext + "_positions.json", "w") as outfile:
         json.dump(recovered, outfile, indent=4)
 
-import write_gps
+
+# I had to modify the library to skip additional compression.
+
+# https://pypi.org/project/gpsphoto/
 
 def gps_to_img_task(img, val, workspace_folder, new_gps_images_folder):
     try:
@@ -310,9 +321,10 @@ def export_gps_to_images(positions, workspace_folder="openMVG/", new_gps_images_
     create_folder(new_gps_images_folder)
     print("WRITING GPS TO IMAGES")
     Parallel(n_jobs=cpu_count(), prefer="threads")(
-        delayed(gps_to_img_task)(img, val, workspace_folder, new_gps_images_folder) \
-            for img, val in tqdm(data.items()) \
-            if not os.path.isfile(new_gps_images_folder + img)
+        delayed(gps_to_img_task)(
+            img, val, workspace_folder, new_gps_images_folder)
+        for img, val in tqdm(data.items())
+        if not os.path.isfile(new_gps_images_folder + img)
     )
 
 
@@ -328,11 +340,13 @@ def get_accuracy(gps_data, sfm_geo_positions, sfm_expanded_positions, output=Non
     # Getting difference to check which images were newly localised.
     with open(sfm_geo_positions, "r") as infile:
         geo_positions = json.load(infile)
-    localised_images = [img for img in localised.keys() if img not in geo_positions.keys()]
+    localised_images = [
+        img for img in localised.keys() if img not in geo_positions.keys()]
 
     with open(georeferencing, "r") as infile:
-        used_for_georeferencing = json.load(infile) 
-    used_for_georeferencing = [filename(img) for img in used_for_georeferencing]
+        used_for_georeferencing = json.load(infile)
+    used_for_georeferencing = [filename(img)
+                               for img in used_for_georeferencing]
 
     newly_localised = {}
     sum_error = 0
