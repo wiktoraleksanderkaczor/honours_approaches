@@ -36,11 +36,8 @@ OPTIONS (Recommended steps ordered will be in [N] format):
 	7. OpenMVG Reconstruct model
 	8. OpenMVG Georegister Model
 	9. OpenMVG Localise unused cleared GPS images, for accuracy checking.
-	10. OpenMVG Localise more unused normal images and videos, refine reconstruction with said images. (REFINEMENT)
-	11. Replace original with refinement.
-	12. Move everything to "reconstructions" folder 
-	13. Merge reconstructions dialog
-	14. Run one reconstruction, no refinement or merging, and store.
+	10. Move everything to "reconstructions" folder 
+	11. Merge reconstructions dialog
 	-1. EXIT
 """
 
@@ -149,39 +146,44 @@ def handle_choice(choice):
             os.system(cmd)
 
     elif choice == 7:
-        commands = [        
-            """
-            openMVG_main_IncrementalSfM \
-                -i openMVG/init/sfm_data.json \
-                -m openMVG/data \
-                -o openMVG/output \
-                --prior_usage 0
-		    """,
+        cmd = \
+        """
+        openMVG_main_IncrementalSfM \
+            -i openMVG/init/sfm_data.json \
+            -m openMVG/data \
+            -o openMVG/output \
+            --prior_usage 0
+        """
 
-            """
-            openMVG_main_ConvertSfM_DataFormat \
-				-i openMVG/output/sfm_data.bin \
-				-o openMVG/output/sfm_data.json
-            """
-        ]
-        for cmd in commands:
-            os.system(cmd)
+        os.system(cmd)
 
     elif choice == 8:
-        from sfm_data import get_bad_altitude_before_georeferencing, remove_images_from_reconstruction_soft
-        # remove_images_from_reconstruction
+        cmd = \
+        """
+        openMVG_main_ConvertSfM_DataFormat \
+            -i openMVG/output/sfm_data.bin \
+            -o openMVG/output/sfm_data.json
+        """
         
-        # Checking bad altitudes by using relative poses from the reconstruction to relative poses from GPS. 
-        bad_alt = get_bad_altitude_before_georeferencing(
-            "intermediate/gps_data_from_images.json", \
-            "openMVG/output/sfm_data.json",)
+        os.system(cmd)
+
+        answer = ""
+        while answer not in ["y", "n"]:
+            answer = input("\nAdditional check for bad altitude images (including removal from sfm_data.json) [y/n]? ")
+
+        if answer == "y":
+            from sfm_data import get_bad_altitude_before_georeferencing, remove_images_from_reconstruction
         
-        # This requires altering the matches files, otherwise, errors on the descriptor vector size.  
-        # unused_images = remove_images_from_reconstruction("openMVG/output/sfm_data.json", bad_alt)
-        
-        # Remove the poses associated with images highlighted as having a bad altitude tag.
-        remove_images_from_reconstruction_soft("openMVG/output/sfm_data.json", bad_alt)
-        print("Images with bad altitude:", bad_alt)
+            # Checking bad altitudes by using relative poses from the reconstruction to relative poses from GPS. 
+            bad_alt = get_bad_altitude_before_georeferencing(
+                "intermediate/gps_data_from_images.json", \
+                "openMVG/output/sfm_data.json",)
+                
+            # Remove the poses associated with images highlighted as having a bad altitude tag.
+            # This might actually introduce more error.
+            remove_images_from_reconstruction("openMVG/output/sfm_data.json", bad_alt)
+            print("Images with bad altitude:", bad_alt)
+
         commands = [
             """
             openMVG_main_ConvertSfM_DataFormat \
@@ -210,7 +212,6 @@ def handle_choice(choice):
         ]
         for cmd in commands:
             os.system(cmd)
-
 
     elif choice == 9:
         commands = [
@@ -255,124 +256,8 @@ def handle_choice(choice):
         from gps import convert_to_kml
         convert_to_kml(georeference="openMVG/sfm_data_expanded_positions.json", gps_data="openMVG/localised_accuracy.json")
         convert_to_kml(georeference="openMVG/some_gps_localization_output/sfm_data_expanded_positions.json", output="openMVG/some_gps_positions.kml", gps_data="openMVG/some_gps_localised_accuracy.json")
-    
+
     elif choice == 10:
-        from fileio import copy
-
-        # Process video links, if any.
-        # https://ostechnix.com/youtube-dl-tutorial-with-examples-for-beginners/
-        if VIDEO_LINKS:
-            for num, link in enumerate(VIDEO_LINKS):
-                cmd = """youtube-dl -o "./video/downloads/vid{}.%(ext)s" -f best '{}'""".format(num, link)
-                os.system(cmd)
-
-            for video in glob("video/downloads/*"):
-                no_ext = filename(video).split(".")[-2].replace(" ", "_")
-                create_folder("./video/extracted/{}/".format(no_ext))
-                cmd = """ffmpeg -i {} -r {} ./video/extracted/{}/{}_%05d.jpg""".format(video, FRAMES_PER_SECOND, no_ext, no_ext)
-                os.system(cmd)
-
-            from images import check_images
-            for folder in glob("video/extracted/*"):      
-                # Remove bad frames, do not hash frames
-                check_images(folder+"/", "intermediate/too_small/", "intermediate/too_blurry/",
-                     RESOLUTION_THRESHOLD=PIXEL_NUM_THRESHOLD, BLURRINESS_THRESHOLD=BLURRINESS_THRESHOLD, hashing=False)
-                
-                for frame in glob(folder + "/*"):
-                    output = "openMVG/refine_localization_images/" + filename(frame)
-                    if not os.path.isfile(output):
-                        copy(frame, output)
-
-        # Copy over N biggest of images to localise, ones not used in the initial reconstruction
-        sorted_by_size = sorted(glob("intermediate/images/*"), key=os.path.getsize, reverse=True)
-        used_images = [filename(img) for img in glob("openMVG/images/*")]
-        sorted_by_size = [img for img in sorted_by_size if filename(img) not in used_images][:ONLY_N_BIGGEST]
-        for img in sorted_by_size:
-            output = "openMVG/refine_localization_images/" + filename(img)
-            if not os.path.isfile(output):
-                copy(img, output)
-
-        cmd = \
-        """
-		openMVG_main_SfM_Localization \
-			-i openMVG/output/sfm_data_geo.bin \
-			--match_dir openMVG/data \
-			--out_dir openMVG/refine_localization_output \
-			--query_image_dir openMVG/refine_localization_images \
-			--numThreads {}
-		""".format(cpu_count())
-
-        os.system(cmd)
-
-        from gps import export_gps_to_images, export_gps_to_file
-        export_gps_to_file(
-            georeference="openMVG/refine_localization_output/sfm_data_expanded.json",
-            output="openMVG/refine_localization_output/")
-        export_gps_to_images("openMVG/refine_localization_output/sfm_data_expanded_positions.json")
-
-        commands = [
-            """
-            openMVG_main_SfMInit_ImageListing \
-                -i openMVG/localization_images_new_gps/ \
-                -d sensor_database.txt \
-                -o openMVG/refinement/init/ \
-                -P 1
-            """,
-
-            """
-            openMVG_main_ComputeFeatures \
-                -i openMVG/refinement/init/sfm_data.json \
-                -o openMVG/refinement/data \
-                -p {} \
-                -n {}
-            """.format(REFINEMENT_DESCRIBER_PRESET, cpu_count()),
-        
-            """
-            openMVG_main_ListMatchingPairs \
-                -i openMVG/refinement/init/sfm_data.json \
-                -o openMVG/refinement/pair_list.txt \
-                -G 1 \
-                -n {}
-            """.format(IMAGES_CLUSTER_NUM),
-
-            """
-            openMVG_main_ComputeMatches \
-                -i openMVG/refinement/init/sfm_data.json \
-                -o openMVG/refinement/data/ \
-                -l openMVG/refinement/pair_list.txt \
-                -m 1 \
-                -f 1
-            """,
-
-            """
-            openMVG_main_IncrementalSfM \
-                -i openMVG/refinement/init/sfm_data.json \
-                -m openMVG/refinement/data/ \
-                -o openMVG/refinement/output \
-                -P 1
-            """,
-
-            """
-            openMVG_main_ConvertSfM_DataFormat \
-				-i openMVG/refinement/sfm_data.bin \
-				-o openMVG/refinement/sfm_data.json
-            """
-        ]
-
-        for cmd in commands:
-            os.system(cmd)
-
-    elif choice == 11:
-        move("openMVG/refinement", "refinement")
-        move("openMVG/localization_images", "refinement/localization_images")
-        from shutil import rmtree
-        rmtree("openMVG")
-        move("refinement", "openMVG")
-        
-        handle_choice(8)
-        handle_choice(9)
-
-    elif choice == 12:
         from fileio import move, copy
         create_folder("reconstructions/" + GEO_TOPIC)
         move("openMVG", "reconstructions/" + GEO_TOPIC + "/")
@@ -380,13 +265,9 @@ def handle_choice(choice):
         move("logs", "reconstructions/"+ GEO_TOPIC + "/")
         copy("./config.py", "reconstructions/" + GEO_TOPIC + "/config.py")
 
-    elif choice == 13:
+    elif choice == 11:
         from sfm_data import merge_reconstructions
         merge_reconstructions()
-
-    elif choice == 14:
-        for opt in [1, 2, 3, 4, 5, 6, 7, 8, 9, 12]:
-            handle_choice(opt)
 
     elif choice == -1:
         exit(0)
