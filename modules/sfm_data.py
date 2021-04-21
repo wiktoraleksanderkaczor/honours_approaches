@@ -254,14 +254,14 @@ def merge_reconstructions(a=None, b=None):
     get_accuracy("reconstructions/" + merge_name + "/intermediate/gps_data_from_images.json",
                  "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
                  "reconstructions/" + merge_name + "/openMVG/sfm_data_expanded_positions.json",
-                 output="reconstructions/" + merge_name + "/localised_accuracy.json",
+                 output="reconstructions/" + merge_name + "/openMVG/localised_accuracy.json",
                  georeferencing="reconstructions/" + merge_name + "/logs/images_for_georeferencing.json")
 
     get_accuracy("reconstructions/" + merge_name + "/intermediate/some_gps_data_from_images.json",
                  "reconstructions/" + merge_name + "/openMVG/sfm_data_geo_positions.json",
                  "reconstructions/" + merge_name +
                  "/openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
-                 output="reconstructions/" + merge_name + "/some_gps_localised_accuracy.json",
+                 output="reconstructions/" + merge_name + "/openMVG/some_gps_localised_accuracy.json",
                  georeferencing="reconstructions/" + merge_name + "/logs/images_for_georeferencing.json")
 
     from gps import convert_to_kml
@@ -274,7 +274,7 @@ def merge_reconstructions(a=None, b=None):
     acc1 = json.load(open(acc1, "r"))
     acc2 = json.load(open(acc2, "r"))
     new_acc = json.load(
-        open("reconstructions/" + merge_name + "/localised_accuracy.json", "r"))
+        open("reconstructions/" + merge_name + "/openMVG/localised_accuracy.json", "r"))
     acc_changes = {}
     for img in new_acc.keys():
         difference_accuracy = None
@@ -288,11 +288,13 @@ def merge_reconstructions(a=None, b=None):
             if difference_accuracy:
                 acc_changes[img] = difference_accuracy
 
+    acc_changes["sum"] = sum(acc_changes.values())
+
     json.dump(acc_changes, open("reconstructions/" + merge_name +
               "/accuracy_changes_from_merge.json", "w+"), indent=4)
 
 
-def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=10):
+def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=15):
     with open(sfm_data, "r") as infile:
         data = json.load(infile)
     with open(gps_data_from_images, "r") as infile:
