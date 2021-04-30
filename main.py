@@ -122,7 +122,8 @@ def handle_choice(choice):
 			openMVG_main_SfMInit_ImageListing \
 				-i openMVG/images \
 				-d sensor_database.txt \
-				-o openMVG/init
+				-o openMVG/init \
+                | tee logs/image_listing.txt
 			""",
 
             """
@@ -139,7 +140,8 @@ def handle_choice(choice):
 				-i openMVG/init/sfm_data.json \
 				-o openMVG/data/ \
                 --guided_matching 1 \
-                --force 1
+                --force 1 \
+                | tee logs/matching.txt
 			"""
         ]
         for cmd in commands:
@@ -158,6 +160,7 @@ def handle_choice(choice):
         os.system(cmd)
 
     elif choice == 8:
+        #from sfm_data import remove_images_from_reconstruction
         cmd = \
         """
         openMVG_main_ConvertSfM_DataFormat \
@@ -167,22 +170,14 @@ def handle_choice(choice):
         
         os.system(cmd)
 
-        answer = ""
-        while answer not in ["y", "n"]:
-            answer = input("\nAdditional check for bad altitude images (including removal from sfm_data.json) [y/n]? ")
+        LMeds_usage = ""
+        while LMeds_usage not in ["y", "n"]:
+            LMeds_usage = input("Use of the OpenMVG LMeds model for georegistration [y/n]? ")
 
-        if answer == "y":
-            from sfm_data import get_bad_altitude_before_georeferencing, remove_images_from_reconstruction
-        
-            # Checking bad altitudes by using relative poses from the reconstruction to relative poses from GPS. 
-            bad_alt = get_bad_altitude_before_georeferencing(
-                "intermediate/gps_data_from_images.json", \
-                "openMVG/output/sfm_data.json",)
-                
-            # Remove the poses associated with images highlighted as having a bad altitude tag.
-            # This might actually introduce more error.
-            remove_images_from_reconstruction("openMVG/output/sfm_data.json", bad_alt)
-            print("Images with bad altitude:", bad_alt)
+        if LMeds_usage == "y":
+            LMeds_usage = "0"
+        else:
+            LMeds_usage = "1"
 
         commands = [
             """
@@ -195,8 +190,9 @@ def handle_choice(choice):
             openMVG_main_geodesy_registration_to_gps_position \
 				-i openMVG/output/sfm_data_modified.bin \
 				-o openMVG/output/sfm_data_geo.bin \
-                -m 0
-            """,
+                -m {} \
+                | tee logs/georegistration.txt
+            """.format(LMeds_usage),
 
             """
             openMVG_main_ConvertSfM_DataFormat \
@@ -237,24 +233,29 @@ def handle_choice(choice):
         for cmd in commands:
             os.system(cmd)
 
-        from gps import export_gps_to_file
+        from gps import export_gps_to_file, get_accuracy, convert_to_kml
+
         export_gps_to_file(georeference="openMVG/output/sfm_data_geo.json")
+
+        # Accurate GPS images
         export_gps_to_file(
             georeference="openMVG/localization_output/sfm_data_expanded.json")
-        export_gps_to_file(georeference="openMVG/some_gps_localization_output/sfm_data_expanded.json", output="openMVG/some_gps_localization_output/")
-
-        from gps import get_accuracy
         get_accuracy("intermediate/gps_data_from_images.json",
-                     "openMVG/sfm_data_geo_positions.json",
-                     "openMVG/sfm_data_expanded_positions.json",
-                     output="openMVG/localised_accuracy.json")
+                    "openMVG/sfm_data_geo_positions.json",
+                    "openMVG/sfm_data_expanded_positions.json",
+                    output="openMVG/localised_accuracy.json")
+
+        convert_to_kml(georeference="openMVG/sfm_data_expanded_positions.json", gps_data="openMVG/localised_accuracy.json")
+
+        # Somewhat accurate GPS images
+        export_gps_to_file(georeference="openMVG/some_gps_localization_output/sfm_data_expanded.json", 
+                            output="openMVG/some_gps_localization_output/")
+
         get_accuracy("intermediate/some_gps_data_from_images.json",
                     "openMVG/sfm_data_geo_positions.json",
                     "openMVG/some_gps_localization_output/sfm_data_expanded_positions.json",
                     output="openMVG/some_gps_localised_accuracy.json")
-
-        from gps import convert_to_kml
-        convert_to_kml(georeference="openMVG/sfm_data_expanded_positions.json", gps_data="openMVG/localised_accuracy.json")
+        
         convert_to_kml(georeference="openMVG/some_gps_localization_output/sfm_data_expanded_positions.json", output="openMVG/some_gps_positions.kml", gps_data="openMVG/some_gps_localised_accuracy.json")
 
     elif choice == 10:

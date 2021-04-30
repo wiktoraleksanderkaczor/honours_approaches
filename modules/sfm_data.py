@@ -77,7 +77,11 @@ def merge_reconstructions(a=None, b=None):
         if options:
             while option not in range(-1, len(options)):
                 for num, option in enumerate(options):
-                    print(num, "-", option)
+                    short = (
+                        option[0].replace("reconstructions/", ""), 
+                        option[1].replace("reconstructions/", "")
+                    )
+                    print(num, "-", short)
                 print("-1 - EXIT DIALOG")
                 try:
                     option = int(input())
@@ -292,65 +296,6 @@ def merge_reconstructions(a=None, b=None):
 
     json.dump(acc_changes, open("reconstructions/" + merge_name +
               "/accuracy_changes_from_merge.json", "w+"), indent=4)
-
-
-def get_bad_altitude_before_georeferencing(gps_data_from_images, sfm_data, threshold=15):
-    with open(sfm_data, "r") as infile:
-        data = json.load(infile)
-    with open(gps_data_from_images, "r") as infile:
-        gps_data = json.load(infile)
-
-    # Check if distances between gps data and position in reconstruction are directly proportional, if so, likely to be correct.
-    # Else, remove from reconstruction's "sfm_data"... and the reconstruction files.
-    # Add to log of "removed because wrong altitude"
-
-    # Get the pose for each image, if it exists.
-    pose_for_image = {}
-    for view in data["views"]:
-        img_data = view["value"]["ptr_wrapper"]["data"]
-        if img_data["filename"] in gps_data.keys():
-            pose_id = img_data["id_pose"]
-            for extrinsic in data["extrinsics"]:
-                if extrinsic["key"] == pose_id:
-                    pose_for_image[img_data["filename"]
-                                   ] = extrinsic["value"]["center"]
-
-    # If image has pose in reconstruction.
-    gps_data = {img: data for img,
-                data in gps_data.items() if img in pose_for_image.keys()}
-
-    # Euclidean distance
-    # https://stackoverflow.com/questions/1401712/how-can-the-euclidean-distance-be-calculated-with-numpy
-    from scipy.spatial import distance
-    bad_position = []
-    #proportions = {}
-    num_images = len(gps_data.keys())
-    for img1, gps1 in gps_data.items():
-        relative_sum = 0
-        gps_sum = 0
-        for img2, gps2 in gps_data.items():
-            if img1 != img2:
-                pose1 = pose_for_image[img1]
-                pose2 = pose_for_image[img2]
-                relative1 = (pose1[0], pose1[1], pose1[2])
-                relative2 = (pose2[0], pose2[1], pose2[2])
-                gps_pose1 = (gps1["lat"], gps1["lon"], gps1["alt"])
-                gps_pose2 = (gps2["lat"], gps2["lon"], gps2["alt"])
-                gps_distance = distance.euclidean(gps_pose1, gps_pose2)
-                relative_distance = distance.euclidean(relative1, relative2)
-                gps_sum += gps_distance
-                relative_sum += relative_distance
-
-        relative_sum = relative_sum / num_images
-        gps_sum = gps_sum / num_images
-        proportion = gps_sum * relative_sum
-        if proportion > threshold:
-            bad_position.append(img1)
-        #proportions[img1] = proportion
-
-    #proportions["average"] = sum(proportions.values()) / len(proportions.keys())
-
-    return bad_position
 
 
 # https://gitlab.com/educelab/sfm-utils/-/blob/develop/sfm_utils/openmvg.py
